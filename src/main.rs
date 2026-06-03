@@ -27,6 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let start = Instant::now();
+    let mut num_of_chunks = 0;
     for f in &valid_files {
         let mut words: Vec<String> = vec![];
 
@@ -46,12 +47,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         let chunks = chunk(words);
         let embedded_text = embed_text(&chunks)?;
+        num_of_chunks += embedded_text.len();
     }
 
     println!(
-        "\nFinished chunking {} files in {:.2?}",
+        "\nFinished chunking {} files in {:.2?}\nSuccessfully inserted {} chunks into vector db",
         &valid_files.len(),
-        start.elapsed()
+        start.elapsed(),
+        num_of_chunks
     );
+
     return Ok(());
 }
