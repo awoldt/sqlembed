@@ -91,3 +91,26 @@ pub fn parse_txt(file: &FileDetail) -> Result<Vec<String>, Box<dyn Error>> {
 
     return Ok(words);
 }
+
+pub fn chunk(words: Vec<String>) -> Vec<String> {
+    let mut chunks: Vec<String> = vec![];
+    let mut current_chunk: Vec<String> = vec![];
+
+    let mut i = 0;
+    for word in words {
+        if i == 250 {
+            chunks.push(current_chunk.join(" "));
+            current_chunk = vec![];
+            i = 0;
+            continue;
+        }
+
+        current_chunk.push(word);
+        i += 1;
+    }
+    if i > 0 {
+        chunks.push(current_chunk.join(" "));
+    }
+
+    return chunks;
+}
