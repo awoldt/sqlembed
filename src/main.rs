@@ -3,6 +3,7 @@ mod utils;
 use std::{
     error::Error,
     ffi::{OsStr, OsString},
+    time::Instant,
 };
 
 use utils::FileDetail;
@@ -25,25 +26,32 @@ fn main() -> Result<(), Box<dyn Error>> {
         valid_files.push(f);
     }
 
-    for f in valid_files {
+    let start = Instant::now();
+    for f in &valid_files {
+        let mut words: Vec<String> = vec![];
+
         if f.extension == "txt".to_string() {
-            let text = match parse_txt(&f) {
+            words = match parse_txt(&f) {
                 Ok(x) => x,
                 Err(e) => return Err(format!("{:#?}\nerror while parsing text file", e).into()),
             };
-            let chunks = chunk(text);
-            let embedded_text = embed_text(&chunks)?;
         }
 
         if f.extension == "pdf".to_string() {
-            let text = match parse_pdf(&f.path) {
+            words = match parse_pdf(&f.path) {
                 Ok(x) => x,
                 Err(e) => return Err(format!("{:#?}\nerror while parsing pdf file", e).into()),
             };
-            let chunks = chunk(text);
-            let embedded_text = embed_text(&chunks)?;
         }
+
+        let chunks = chunk(words);
+        let embedded_text = embed_text(&chunks)?;
     }
 
+    println!(
+        "\nFinished chunking {} files in {:.2?}",
+        &valid_files.len(),
+        start.elapsed()
+    );
     return Ok(());
 }
