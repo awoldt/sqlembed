@@ -6,7 +6,7 @@ use std::{
 };
 
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-
+use pdfsink_rs::PdfDocument;
 const VALID_FILE_EXTENSIONS: [&str; 2] = ["pdf", "txt"];
 
 #[derive(Debug)]
@@ -17,8 +17,8 @@ pub struct FileDetail {
 
 #[derive(Debug)]
 pub struct Chunk {
-    content: String,     // raw human readable text
-    vectors: Vec<f32>, // the vector that represents this text
+    content: String,   // raw human readable text
+    vectors: Vec<f32>, // the vectors that represents this chunk of text
 }
 
 pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn Error>> {
@@ -99,6 +99,20 @@ pub fn parse_txt(file: &FileDetail) -> Result<Vec<String>, Box<dyn Error>> {
     return Ok(words);
 }
 
+pub fn parse_pdf(path: &String) -> Result<Vec<String>, Box<dyn Error>> {
+    let file = PdfDocument::open(path)?;
+    let text = file.extract_text();
+
+    // split text by whitespace
+    // and space to get individual words
+    let mut words: Vec<String> = vec![];
+    for word in text.trim().split(" ") {
+        words.push(word.to_string());
+    }
+
+    Ok(words)
+}
+
 pub fn chunk(words: Vec<String>) -> Vec<String> {
     let mut chunks: Vec<String> = vec![];
     let mut current_chunk: Vec<String> = vec![];
@@ -132,7 +146,7 @@ pub fn embed_text(chunks: &Vec<String>) -> Result<Vec<Chunk>, Box<dyn Error>> {
     let mut returned_chunks: Vec<Chunk> = vec![];
     for (i, v) in chunks.iter().enumerate() {
         returned_chunks.push(Chunk {
-            content: v.to_string(),           // the 250 word chunk
+            content: v.to_string(),         // the 250 word chunk
             vectors: embeddings[i].clone(), // the vector for this specific chunk
         });
     }
