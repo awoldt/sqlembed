@@ -1,4 +1,3 @@
-use pdfsink_rs::PdfDocument;
 use std::{
     error::Error,
     ffi::OsString,
@@ -6,12 +5,20 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+
 const VALID_FILE_EXTENSIONS: [&str; 2] = ["pdf", "txt"];
 
 #[derive(Debug)]
 pub struct FileDetail {
     pub path: String,
     pub extension: String,
+}
+
+#[derive(Debug)]
+pub struct Chunk {
+    content: String,     // raw human readable text
+    vectors: Vec<f32>, // the vector that represents this text
 }
 
 pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn Error>> {
@@ -113,4 +120,22 @@ pub fn chunk(words: Vec<String>) -> Vec<String> {
     }
 
     return chunks;
+}
+
+pub fn embed_text(chunks: &Vec<String>) -> Result<Vec<Chunk>, Box<dyn Error>> {
+    // this will take in the chunks from a file and embed them all on local machine
+    // uses the "fastembed" package
+
+    let mut model = TextEmbedding::try_new(InitOptions::new(EmbeddingModel::BGESmallENV15))?;
+    let embeddings = model.embed(chunks, None)?;
+
+    let mut returned_chunks: Vec<Chunk> = vec![];
+    for (i, v) in chunks.iter().enumerate() {
+        returned_chunks.push(Chunk {
+            content: v.to_string(),           // the 250 word chunk
+            vectors: embeddings[i].clone(), // the vector for this specific chunk
+        });
+    }
+
+    Ok(returned_chunks)
 }

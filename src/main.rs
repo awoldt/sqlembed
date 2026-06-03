@@ -7,7 +7,7 @@ use std::{
 
 use utils::FileDetail;
 
-use crate::utils::{chunk, get_files, is_valid_file_extension, parse_txt};
+use crate::utils::{chunk, embed_text, get_files, is_valid_file_extension, parse_txt};
 fn main() -> Result<(), Box<dyn Error>> {
     let cwd = std::env::current_dir()?;
     let mut files: Vec<FileDetail> = vec![]; // this will have all files
@@ -32,7 +32,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(e) => return Err(format!("{:#?}\nerror while parsing text file", e).into()),
             };
             let chunks = chunk(text);
-            println!("{:?}", chunks);
+
+            let embedded_text = embed_text(&chunks)?;
+            println!("{:?}", embedded_text);
         }
     }
 

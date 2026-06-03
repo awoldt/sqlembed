@@ -4,4 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+fastembed = "5.15.0"
 pdfsink-rs = "0.2.8"
+reqwest = {version = "0.13.4", features = ["blocking"]}
+serde_json = "1.0.150"
