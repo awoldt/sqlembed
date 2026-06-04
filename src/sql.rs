@@ -9,6 +9,8 @@
     tons and tons of chunk files. each chunk has an association with a file
 */
 
+use std::error::Error;
+
 pub struct FilesChunkResults {
     pub filename: String,
     pub file_extention: String,
@@ -61,7 +63,9 @@ pub fn generate_sql(chunks: &Vec<FilesChunkResults>, dimensionality: i32) -> Str
             str.push_str(
                 format!(
                     "INSERT INTO chunks(content, embeddings, file_id) VALUES('{}',{:?},{});\n",
-                    c.content, c.embedding, file_id
+                    c.content.replace("'", "''"),
+                    c.embedding,
+                    file_id
                 )
                 .as_str(),
             )
@@ -69,4 +73,13 @@ pub fn generate_sql(chunks: &Vec<FilesChunkResults>, dimensionality: i32) -> Str
     }
 
     return str.to_owned();
+}
+
+pub fn write_sql_to_filesystem(query: &str) -> Result<(), Box<dyn Error>> {
+    // this function will take the final sql queries generated above and
+    // write to a single ".sql" file in the cwd
+
+    std::fs::write("sql.sql", query)?;
+
+    Ok(())
 }

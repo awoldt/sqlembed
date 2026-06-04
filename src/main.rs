@@ -12,7 +12,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use utils::FileDetail;
 
 use crate::{
-    sql::{FilesChunkResults, generate_sql},
+    sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{chunk_text_file, get_files, is_valid_file_extension},
 };
 fn main() -> Result<(), Box<dyn Error>> {
@@ -49,14 +49,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             file_results.push(FilesChunkResults {
                 filename: f.path.to_string(),
                 chunks: chunk_results,
-                file_extention: f.extension.to_string()
+                file_extention: f.extension.to_string(),
             });
         }
     }
 
     pb.finish();
 
-    let strign = generate_sql(&file_results, 1573);
-    println!("{}",strign);
+    let sql_string = generate_sql(&file_results, 1573);
+    write_sql_to_filesystem(&sql_string)?;
+
     return Ok(());
 }
