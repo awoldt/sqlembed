@@ -1,3 +1,4 @@
+mod sql;
 mod utils;
 
 use std::{
@@ -10,7 +11,10 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 use utils::FileDetail;
 
-use crate::utils::{chunk_text_file, get_files, is_valid_file_extension};
+use crate::{
+    sql::{FilesChunkResults, generate_sql},
+    utils::{chunk_text_file, get_files, is_valid_file_extension},
+};
 fn main() -> Result<(), Box<dyn Error>> {
     let cwd = std::env::current_dir()?;
     let mut files: Vec<FileDetail> = vec![]; // this will have all files
@@ -28,6 +32,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         valid_files.push(f);
     }
 
+    let mut file_results: Vec<FilesChunkResults> = vec![];
+
     let pb = ProgressBar::new_spinner();
     pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
 
@@ -40,8 +46,17 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Ok(x) => x,
                 Err(x) => return Err(x),
             };
+            file_results.push(FilesChunkResults {
+                filename: f.path.to_string(),
+                chunks: chunk_results,
+                file_extention: f.extension.to_string()
+            });
         }
     }
 
+    pb.finish();
+
+    let strign = generate_sql(&file_results, 1573);
+    println!("{}",strign);
     return Ok(());
 }
