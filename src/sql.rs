@@ -44,17 +44,28 @@ pub fn generate_sql(chunks: &Vec<FilesChunkResults>, dimensionality: i32) -> Str
 
     str.push_str("\n");
 
-    // now add all the chunks
+    // now add all the files
     for (i, chunk) in chunks.iter().enumerate() {
+        let file_id = i + 1;
+
         str.push_str(
             format!(
-                "INSERT INTO files(file_id, absolute_path, extension) VALUES({},{},{});\n",
-                i,
-                chunk.filename,
-                chunk.file_extention
+                "INSERT INTO files(file_id, absolute_path, extension) VALUES({},'{}','{}');\n",
+                file_id, chunk.filename, chunk.file_extention
             )
             .as_str(),
         );
+
+        // now add all the chunks for each file
+        for c in &chunk.chunks {
+            str.push_str(
+                format!(
+                    "INSERT INTO chunks(content, embeddings, file_id) VALUES('{}',{:?},{});\n",
+                    c.content, c.embedding, file_id
+                )
+                .as_str(),
+            )
+        }
     }
 
     return str.to_owned();
