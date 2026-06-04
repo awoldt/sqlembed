@@ -21,6 +21,11 @@ pub struct Chunk {
     pub embedding: Vec<f32>, // the vectors that represents this chunk of text
 }
 
+#[derive(PartialEq)]
+pub enum EmbeddingModelUsed {
+    BGESmallENV15
+}
+
 pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn Error>> {
     // this function will read all files in a directory
     // including files within all nested directories

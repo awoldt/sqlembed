@@ -17,25 +17,40 @@ pub struct FilesChunkResults {
     pub chunks: Vec<Chunk>,
 }
 
-use crate::utils::Chunk;
+use crate::utils::{Chunk, EmbeddingModelUsed};
 
-pub fn generate_sql(chunks: &Vec<FilesChunkResults>, dimensionality: i32) -> String {
+pub fn generate_sql(
+    chunks: &Vec<FilesChunkResults>,
+    embedding_model: EmbeddingModelUsed,
+) -> Result<String, Box<dyn Error>> {
+    // the dimensions of the vectors depend on the model used to embed
+    let mut dimensionality = 0;
+    match embedding_model {
+        EmbeddingModelUsed::BGESmallENV15 => dimensionality = 384,
+        _ => {
+            return Err("must use a valid embedding model
+             "
+            .into());
+        }
+    }
+
     // generate sql create tables query
     let mut str: String = String::new();
     str.push_str(
         format!(
             "
         CREATE TABLE files(
-            file_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            file_id INT PRIMARY KEY,
             absolute_path TEXT NOT NULL,
             extension VARCHAR(250) NOT NULL
         );
 
+        CREATE EXTENSION IF NOT EXISTS vector;
         CREATE TABLE chunks(
             chunk_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            content VARCHAR(255) NOT NULL,
+            content TEXT NOT NULL,
             embeddings VECTOR({}) NOT NULL,
-            file_id INT,
+            file_id INT NOT NULL,
             FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
         );
     ",
@@ -62,7 +77,7 @@ pub fn generate_sql(chunks: &Vec<FilesChunkResults>, dimensionality: i32) -> Str
         for c in &chunk.chunks {
             str.push_str(
                 format!(
-                    "INSERT INTO chunks(content, embeddings, file_id) VALUES('{}',{:?},{});\n",
+                    "INSERT INTO chunks(content, embeddings, file_id) VALUES('{}','{:?}',{});\n",
                     c.content.replace("'", "''"),
                     c.embedding,
                     file_id
@@ -72,7 +87,7 @@ pub fn generate_sql(chunks: &Vec<FilesChunkResults>, dimensionality: i32) -> Str
         }
     }
 
-    return str.to_owned();
+    return Ok(str.to_owned());
 }
 
 pub fn write_sql_to_filesystem(query: &str) -> Result<(), Box<dyn Error>> {

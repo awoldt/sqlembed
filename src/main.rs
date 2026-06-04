@@ -13,7 +13,9 @@ use utils::FileDetail;
 
 use crate::{
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
-    utils::{chunk_text_file, get_files, is_valid_file_extension},
+    utils::{
+        EmbeddingModelUsed::BGESmallENV15, chunk_text_file, get_files, is_valid_file_extension,
+    },
 };
 fn main() -> Result<(), Box<dyn Error>> {
     let cwd = std::env::current_dir()?;
@@ -56,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     pb.finish();
 
-    let sql_string = generate_sql(&file_results, 1573);
+    let sql_string = generate_sql(&file_results, BGESmallENV15)?;
     write_sql_to_filesystem(&sql_string)?;
 
     return Ok(());
