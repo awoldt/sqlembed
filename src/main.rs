@@ -14,7 +14,8 @@ use utils::FileDetail;
 use crate::{
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{
-        EmbeddingModelUsed::BGESmallENV15, chunk_text_file, get_files, is_valid_file_extension,
+        EmbeddingModelUsed::BGESmallENV15, chunk_pdf_file, chunk_text_file, get_files,
+        is_valid_file_extension,
     },
 };
 fn main() -> Result<(), Box<dyn Error>> {
@@ -45,6 +46,18 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         if f.extension == "txt" {
             let chunk_results = match chunk_text_file(f) {
+                Ok(x) => x,
+                Err(x) => return Err(x),
+            };
+            file_results.push(FilesChunkResults {
+                filename: f.path.to_string(),
+                chunks: chunk_results,
+                file_extention: f.extension.to_string(),
+            });
+        }
+
+        if f.extension == "pdf" {
+            let chunk_results = match chunk_pdf_file(f) {
                 Ok(x) => x,
                 Err(x) => return Err(x),
             };

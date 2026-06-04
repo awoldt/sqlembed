@@ -1,3 +1,5 @@
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use pdfsink_rs::PdfDocument;
 use std::{
     error::Error,
     ffi::OsString,
@@ -6,8 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-const VALID_FILE_EXTENSIONS: [&str; 1] = ["txt"];
+const VALID_FILE_EXTENSIONS: [&str; 2] = ["txt", "pdf"];
 
 #[derive(Debug)]
 pub struct FileDetail {
@@ -23,7 +24,7 @@ pub struct Chunk {
 
 #[derive(PartialEq)]
 pub enum EmbeddingModelUsed {
-    BGESmallENV15
+    BGESmallENV15,
 }
 
 pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn Error>> {
@@ -130,6 +131,52 @@ pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
     embed_chunks(&mut chunks)?;
 
     return Ok(chunks);
+}
+
+pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
+    // we need to parse each pdf page individually to prevent loading the entirety
+    // of the pdf file as text into memory
+
+    let pdf = PdfDocument::open(file.path.clone())?;
+    if pdf.is_empty() {
+        // no pages on pdf, just return success with no chunks
+        return Ok(vec![]);
+    }
+
+    let mut chunks: Vec<Chunk> = vec![];
+
+    let mut chunk_text: Vec<String> = vec![];
+
+    for page in pdf.pages() {
+        // load 250 words per chunk content
+        for word in page.extract_text().split_whitespace() {
+            if chunk_text.len() >= 250 {
+                // once hit 250 words, build the next chunk
+                chunks.push(Chunk {
+                    content: chunk_text.join(" "),
+                    embedding: vec![], // will be set at later step
+                });
+                chunk_text.clear();
+                continue;
+            }
+
+            chunk_text.push(word.to_string());
+        }
+    }
+    // if theres words left over after the loop ends, add
+    if chunk_text.len() > 0 {
+        chunks.push(Chunk {
+            content: chunk_text.join(" "),
+            embedding: vec![], // will be set at later step
+        });
+        chunk_text.clear();
+    }
+
+    // now that have all the chunks, need to embed each one
+    // loop through the reutnred value and update to the embedding field on the struct
+    embed_chunks(&mut chunks)?;
+
+    Ok(chunks)
 }
 
 fn embed_chunks(chunks: &mut Vec<Chunk>) -> Result<(), Box<dyn Error>> {
