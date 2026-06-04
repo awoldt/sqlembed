@@ -14,8 +14,8 @@ use utils::FileDetail;
 use crate::{
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{
-        EmbeddingModelUsed::BGESmallENV15, chunk_docx_file, chunk_pdf_file, chunk_text_file,
-        get_files, is_valid_file_extension,
+        EmbeddingModelUsed::BGESmallENV15, VALID_FILE_EXTENSIONS, chunk_docx_file, chunk_pdf_file,
+        chunk_text_file, get_files, is_valid_file_extension,
     },
 };
 
@@ -34,6 +34,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             continue;
         }
         valid_files.push(f);
+    }
+
+    if valid_files.len() == 0 {
+        println!(
+            "there are no files to embed. valid files extensions: {}",
+            VALID_FILE_EXTENSIONS.join(", ")
+        );
+        return Ok(());
     }
 
     let mut file_results: Vec<FilesChunkResults> = vec![];

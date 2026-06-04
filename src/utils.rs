@@ -9,7 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const VALID_FILE_EXTENSIONS: [&str; 3] = ["txt", "pdf", "docx"];
+pub const VALID_FILE_EXTENSIONS: [&str; 3] = ["txt", "pdf", "docx"];
 
 #[derive(Debug)]
 pub struct FileDetail {
