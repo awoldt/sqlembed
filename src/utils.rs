@@ -5,7 +5,7 @@ use std::{
     error::Error,
     ffi::OsString,
     fs::{self, DirEntry, File},
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
 };
 
@@ -95,37 +95,16 @@ pub fn is_valid_file_extension(file: &FileDetail) -> bool {
 pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
     // read text into a reader to prevent massive files being loaded
     // into memory all at once
-    let mut chunks: Vec<Chunk> = vec![];
-
     let f: File = File::open(&file.path)?;
-    let buf_reader: BufReader<File> = BufReader::new(f);
+    let mut buf_reader: BufReader<File> = BufReader::new(f);
 
-    // load 250 words per chunk content
+    let mut str = String::new();
+    buf_reader.read_to_string(&mut str)?;
+
+    let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
-    for line in buf_reader.lines() {
-        let lines = line?;
-        for word in lines.split_whitespace() {
-            if chunk_text.len() >= 250 {
-                // once hit 250 words, build the next chunk
-                chunks.push(Chunk {
-                    content: chunk_text.join(" "),
-                    embedding: vec![], // will be set at later step
-                });
-                chunk_text.clear();
-                continue;
-            }
 
-            chunk_text.push(word.to_string());
-        }
-    }
-    // if theres words left over after the loop ends, add
-    if chunk_text.len() > 0 {
-        chunks.push(Chunk {
-            content: chunk_text.join(" "),
-            embedding: vec![], // will be set at later step
-        });
-        chunk_text.clear();
-    }
+    extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value and update to the embedding field on the struct
@@ -135,43 +114,17 @@ pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
 }
 
 pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    // we need to parse each pdf page individually to prevent loading the entirety
-    // of the pdf file as text into memory
-
     let pdf = PdfDocument::open(file.path.clone())?;
     if pdf.is_empty() {
         // no pages on pdf, just return success with no chunks
         return Ok(vec![]);
     }
+    let str = pdf.extract_text();
 
     let mut chunks: Vec<Chunk> = vec![];
-
     let mut chunk_text: Vec<String> = vec![];
 
-    for page in pdf.pages() {
-        // load 250 words per chunk content
-        for word in page.extract_text().split_whitespace() {
-            if chunk_text.len() >= 250 {
-                // once hit 250 words, build the next chunk
-                chunks.push(Chunk {
-                    content: chunk_text.join(" "),
-                    embedding: vec![], // will be set at later step
-                });
-                chunk_text.clear();
-                continue;
-            }
-
-            chunk_text.push(word.to_string());
-        }
-    }
-    // if theres words left over after the loop ends, add
-    if chunk_text.len() > 0 {
-        chunks.push(Chunk {
-            content: chunk_text.join(" "),
-            embedding: vec![], // will be set at later step
-        });
-        chunk_text.clear();
-    }
+    extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value and update to the embedding field on the struct
@@ -185,8 +138,20 @@ pub fn chunk_docx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
     let str = doc.extract_text();
 
     let mut chunks: Vec<Chunk> = vec![];
-
     let mut chunk_text: Vec<String> = vec![];
+
+    extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
+
+    // now that have all the chunks, need to embed each one
+    // loop through the reutnred value and update to the embedding field on the struct
+    embed_chunks(&mut chunks)?;
+
+    return Ok(chunks);
+}
+
+fn extract_250_word_chunks(chunks: &mut Vec<Chunk>, chunk_text: &mut Vec<String>, str: String) {
+    // helper function to extract entire text from files parsed into 250 chunks
+    // before sending into embedding model
 
     for word in str.split_whitespace() {
         if chunk_text.len() >= 250 {
@@ -210,12 +175,6 @@ pub fn chunk_docx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
         });
         chunk_text.clear();
     }
-
-    // now that have all the chunks, need to embed each one
-    // loop through the reutnred value and update to the embedding field on the struct
-    embed_chunks(&mut chunks)?;
-
-    return Ok(chunks);
 }
 
 fn embed_chunks(chunks: &mut Vec<Chunk>) -> Result<(), Box<dyn Error>> {
