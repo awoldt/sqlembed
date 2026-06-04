@@ -1,13 +1,13 @@
 use std::{
     error::Error,
     ffi::OsString,
-    fs::{self, DirEntry},
+    fs::{self, DirEntry, File},
+    io::{BufRead, BufReader},
     path::{Path, PathBuf},
 };
 
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use pdfsink_rs::PdfDocument;
-const VALID_FILE_EXTENSIONS: [&str; 2] = ["pdf", "txt"];
+const VALID_FILE_EXTENSIONS: [&str; 1] = ["txt"];
 
 #[derive(Debug)]
 pub struct FileDetail {
@@ -17,8 +17,8 @@ pub struct FileDetail {
 
 #[derive(Debug)]
 pub struct Chunk {
-    content: String,   // raw human readable text
-    vectors: Vec<f32>, // the vectors that represents this chunk of text
+    pub content: String,     // raw human readable text
+    pub embedding: Vec<f32>, // the vectors that represents this chunk of text
 }
 
 pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn Error>> {
@@ -85,71 +85,69 @@ pub fn is_valid_file_extension(file: &FileDetail) -> bool {
     return false;
 }
 
-pub fn parse_txt(file: &FileDetail) -> Result<Vec<String>, Box<dyn Error>> {
-    // get the raw string as a text
-    let file_text = fs::read_to_string(&file.path)?;
+pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
+    // read text into a reader to prevent massive files being loaded
+    // into memory all at once
+    let mut chunks: Vec<Chunk> = vec![];
 
-    // split text by whitespace
-    // and space to get individual words
-    let mut words: Vec<String> = vec![];
-    for word in file_text.trim().split(" ") {
-        words.push(word.to_string());
-    }
+    let f: File = File::open(&file.path)?;
+    let buf_reader: BufReader<File> = BufReader::new(f);
 
-    return Ok(words);
-}
+    // load 250 words per chunk content
+    let mut chunk_text: Vec<String> = vec![];
+    for line in buf_reader.lines() {
+        let lines = line?;
+        for word in lines.split_whitespace() {
+            if chunk_text.len() >= 250 {
+                // once we hit 250 words, build the next chunk
+                chunks.push(Chunk {
+                    content: chunk_text.join(" "),
+                    embedding: vec![], // will be set at later step
+                });
+                chunk_text.clear();
+                continue;
+            }
 
-pub fn parse_pdf(path: &String) -> Result<Vec<String>, Box<dyn Error>> {
-    let file = PdfDocument::open(path)?;
-    let text = file.extract_text();
-
-    // split text by whitespace
-    // and space to get individual words
-    let mut words: Vec<String> = vec![];
-    for word in text.trim().split(" ") {
-        words.push(word.to_string());
-    }
-
-    Ok(words)
-}
-
-pub fn chunk(words: Vec<String>) -> Vec<String> {
-    let mut chunks: Vec<String> = vec![];
-    let mut current_chunk: Vec<String> = vec![];
-
-    let mut i = 0;
-    for word in words {
-        if i == 250 {
-            chunks.push(current_chunk.join(" "));
-            current_chunk = vec![];
-            i = 0;
-            continue;
+            chunk_text.push(word.to_string());
         }
-
-        current_chunk.push(word);
-        i += 1;
     }
-    if i > 0 {
-        chunks.push(current_chunk.join(" "));
+    // if theres words left over after the loop ends, add
+    if chunk_text.len() > 0 {
+        chunks.push(Chunk {
+            content: chunk_text.join(" "),
+            embedding: vec![], // will be set at later step
+        });
+        chunk_text.clear();
     }
 
-    return chunks;
+    // now that we have all the chunks, we need to embed each one
+    // loop through the reutnred value and update to the embedding field on the struct
+    embed_chunks(&mut chunks)?;
+
+    return Ok(chunks);
 }
 
-pub fn embed_text(chunks: &Vec<String>) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    // this will take in the chunks from a file and embed them all on local machine
-    // uses the "fastembed" package
+fn embed_chunks(chunks: &mut Vec<Chunk>) -> Result<(), Box<dyn Error>> {
+    let mut model: TextEmbedding =
+        TextEmbedding::try_new(InitOptions::new(EmbeddingModel::BGESmallENV15))?;
 
-    let mut model = TextEmbedding::try_new(InitOptions::new(EmbeddingModel::BGESmallENV15))?;
-    let embeddings = model.embed(chunks, None)?;
-
-    let mut returned_chunks: Vec<Chunk> = vec![];
-    for (i, v) in chunks.iter().enumerate() {
-        returned_chunks.push(Chunk {
-            content: v.to_string(),         // the 250 word chunk
-            vectors: embeddings[i].clone(), // the vector for this specific chunk
-        });
+    let mut words: Vec<String> = vec![];
+    for c in chunks.iter_mut() {
+        words.push(c.content.clone())
     }
 
-    Ok(returned_chunks)
+    let embeddings = model.embed(words, None)?;
+    let num_of_chunks = chunks.len();
+    let num_of_embeddings = embeddings.len();
+
+    if num_of_embeddings != num_of_chunks {
+        return Err("embedding count did not match chunk count".into());
+    }
+
+    // set the embedding now for each chunk
+    for (i, c) in chunks.iter_mut().enumerate() {
+        c.embedding = embeddings[i].clone();
+    }
+
+    Ok(())
 }

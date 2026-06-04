@@ -8,7 +8,7 @@ use std::{
 
 use utils::FileDetail;
 
-use crate::utils::{chunk, embed_text, get_files, is_valid_file_extension, parse_pdf, parse_txt};
+use crate::utils::{chunk_text_file, get_files, is_valid_file_extension};
 fn main() -> Result<(), Box<dyn Error>> {
     let cwd = std::env::current_dir()?;
     let mut files: Vec<FileDetail> = vec![]; // this will have all files
@@ -26,36 +26,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         valid_files.push(f);
     }
 
-    let start = Instant::now();
-    let mut num_of_chunks = 0;
     for f in &valid_files {
-        let mut words: Vec<String> = vec![];
-
-        if f.extension == "txt".to_string() {
-            words = match parse_txt(&f) {
+        if f.extension == "txt" {
+            let chunk_results = match chunk_text_file(f) {
                 Ok(x) => x,
-                Err(e) => return Err(format!("{:#?}\nerror while parsing text file", e).into()),
+                Err(x) => return Err(x),
             };
         }
-
-        if f.extension == "pdf".to_string() {
-            words = match parse_pdf(&f.path) {
-                Ok(x) => x,
-                Err(e) => return Err(format!("{:#?}\nerror while parsing pdf file", e).into()),
-            };
-        }
-
-        let chunks = chunk(words);
-        let embedded_text = embed_text(&chunks)?;
-        num_of_chunks += embedded_text.len();
     }
-
-    println!(
-        "\nFinished chunking {} files in {:.2?}\nSuccessfully inserted {} chunks into vector db",
-        &valid_files.len(),
-        start.elapsed(),
-        num_of_chunks
-    );
 
     return Ok(());
 }
