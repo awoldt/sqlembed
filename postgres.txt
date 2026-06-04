@@ -1,0 +1,19 @@
+PostgreSQL is an open-source relational database management system.
+
+Databases contain schemas, schemas contain tables, and tables contain rows and columns.
+
+Primary keys uniquely identify rows within a table. Foreign keys establish relationships between tables.
+
+Indexes improve query performance by allowing PostgreSQL to locate data more efficiently.
+
+Views are virtual tables defined by SQL queries. They do not typically store data themselves but present data from underlying tables.
+
+Transactions ensure a group of database operations either complete successfully together or are rolled back together.
+
+PostgreSQL supports advanced features such as JSON storage, full-text search, window functions, materialized views, and custom data types.
+
+Extensions can add additional functionality. Examples include pgvector for vector similarity search and PostGIS for geospatial queries.
+
+The COPY command provides an efficient mechanism for bulk importing and exporting data.
+
+PostgreSQL is widely used in web applications, analytics platforms, SaaS products, and enterprise systems.

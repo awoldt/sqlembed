@@ -3,8 +3,10 @@ mod utils;
 use std::{
     error::Error,
     ffi::{OsStr, OsString},
-    time::Instant,
+    time::{Duration, Instant},
 };
+
+use indicatif::{ProgressBar, ProgressStyle};
 
 use utils::FileDetail;
 
@@ -26,7 +28,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         valid_files.push(f);
     }
 
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
+
     for f in &valid_files {
+        pb.set_message(format!("chunking {:?}", f.path));
+        pb.enable_steady_tick(Duration::from_millis(100));
+
         if f.extension == "txt" {
             let chunk_results = match chunk_text_file(f) {
                 Ok(x) => x,

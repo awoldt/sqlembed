@@ -3412,6 +3412,7 @@ name = "vectorize"
 version = "0.1.0"
 dependencies = [
  "fastembed",
+ "indicatif",
  "pdfsink-rs",
  "reqwest 0.13.4",
  "serde_json",

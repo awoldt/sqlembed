@@ -1,0 +1,19 @@
+Rust is a systems programming language focused on safety, speed, and concurrency.
+
+One of Rust's core features is ownership. Every value in Rust has a single owner responsible for cleaning up the value when it is no longer needed.
+
+Borrowing allows functions to access values without taking ownership. Immutable references permit reading data, while mutable references permit modifying data.
+
+The Rust compiler uses a borrow checker to enforce memory safety rules at compile time. This prevents many common bugs such as use-after-free and data races.
+
+Enums allow developers to represent values that may take on one of several variants. The Option enum is commonly used to represent the presence or absence of a value.
+
+Result is used for error handling. Functions that may fail often return Result<T, E>, where T is the success type and E is the error type.
+
+Traits define shared behavior. Types can implement traits to provide specific functionality.
+
+Cargo is Rust's package manager and build tool. It handles dependency management, compilation, testing, and publishing.
+
+Rust is commonly used for command-line tools, web services, game engines, databases, networking software, and operating system development.
+
+Many developers choose Rust because it provides performance similar to C and C++ while offering stronger safety guarantees.
