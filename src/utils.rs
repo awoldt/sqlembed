@@ -93,8 +93,6 @@ pub fn is_valid_file_extension(file: &FileDetail) -> bool {
 }
 
 pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    // read text into a reader to prevent massive files being loaded
-    // into memory all at once
     let f: File = File::open(&file.path)?;
     let mut buf_reader: BufReader<File> = BufReader::new(f);
 
@@ -134,8 +132,8 @@ pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
 }
 
 pub fn chunk_docx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    let doc = parse_document_from_path(file.path.clone())?;
-    let str = doc.extract_text();
+    let doc: docx_lite::Document = parse_document_from_path(file.path.clone())?;
+    let str: String = doc.extract_text();
 
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
