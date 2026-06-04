@@ -99,7 +99,7 @@ pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
         let lines = line?;
         for word in lines.split_whitespace() {
             if chunk_text.len() >= 250 {
-                // once we hit 250 words, build the next chunk
+                // once hit 250 words, build the next chunk
                 chunks.push(Chunk {
                     content: chunk_text.join(" "),
                     embedding: vec![], // will be set at later step
@@ -120,7 +120,7 @@ pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
         chunk_text.clear();
     }
 
-    // now that we have all the chunks, we need to embed each one
+    // now that have all the chunks, need to embed each one
     // loop through the reutnred value and update to the embedding field on the struct
     embed_chunks(&mut chunks)?;
 
