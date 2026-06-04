@@ -14,10 +14,11 @@ use utils::FileDetail;
 use crate::{
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{
-        EmbeddingModelUsed::BGESmallENV15, chunk_pdf_file, chunk_text_file, get_files,
-        is_valid_file_extension,
+        EmbeddingModelUsed::BGESmallENV15, chunk_docx_file, chunk_pdf_file, chunk_text_file,
+        get_files, is_valid_file_extension,
     },
 };
+
 fn main() -> Result<(), Box<dyn Error>> {
     let cwd = std::env::current_dir()?;
     let mut files: Vec<FileDetail> = vec![]; // this will have all files
@@ -58,6 +59,18 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         if f.extension == "pdf" {
             let chunk_results = match chunk_pdf_file(f) {
+                Ok(x) => x,
+                Err(x) => return Err(x),
+            };
+            file_results.push(FilesChunkResults {
+                filename: f.path.to_string(),
+                chunks: chunk_results,
+                file_extention: f.extension.to_string(),
+            });
+        }
+
+        if f.extension == "docx" {
+            let chunk_results = match chunk_docx_file(f) {
                 Ok(x) => x,
                 Err(x) => return Err(x),
             };

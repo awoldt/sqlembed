@@ -1,3 +1,4 @@
+use docx_lite::{ExtractOptions, parse_document_from_path};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use pdfsink_rs::PdfDocument;
 use std::{
@@ -8,7 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const VALID_FILE_EXTENSIONS: [&str; 2] = ["txt", "pdf"];
+const VALID_FILE_EXTENSIONS: [&str; 3] = ["txt", "pdf", "docx"];
 
 #[derive(Debug)]
 pub struct FileDetail {
@@ -177,6 +178,44 @@ pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
     embed_chunks(&mut chunks)?;
 
     Ok(chunks)
+}
+
+pub fn chunk_docx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
+    let doc = parse_document_from_path(file.path.clone())?;
+    let str = doc.extract_text();
+
+    let mut chunks: Vec<Chunk> = vec![];
+
+    let mut chunk_text: Vec<String> = vec![];
+
+    for word in str.split_whitespace() {
+        if chunk_text.len() >= 250 {
+            // once hit 250 words, build the next chunk
+            chunks.push(Chunk {
+                content: chunk_text.join(" "),
+                embedding: vec![], // will be set at later step
+            });
+            chunk_text.clear();
+            continue;
+        }
+
+        chunk_text.push(word.to_string());
+    }
+
+    // if theres words left over after the loop ends, add
+    if chunk_text.len() > 0 {
+        chunks.push(Chunk {
+            content: chunk_text.join(" "),
+            embedding: vec![], // will be set at later step
+        });
+        chunk_text.clear();
+    }
+
+    // now that have all the chunks, need to embed each one
+    // loop through the reutnred value and update to the embedding field on the struct
+    embed_chunks(&mut chunks)?;
+
+    return Ok(chunks);
 }
 
 fn embed_chunks(chunks: &mut Vec<Chunk>) -> Result<(), Box<dyn Error>> {
