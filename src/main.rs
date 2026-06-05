@@ -30,6 +30,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         Err(x) => return Err(x),
     };
 
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
+    pb.enable_steady_tick(Duration::from_millis(50));
+    pb.set_message("gathering files for chunking");
+
     // only use valid files
     let mut valid_files: Vec<FileDetail> = vec![];
     for f in files {
@@ -53,10 +58,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         TextEmbedding::try_new(InitOptions::new(EmbeddingModel::BGESmallENV15))?;
 
     let mut file_results: Vec<FilesChunkResults> = vec![];
-
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
-    pb.enable_steady_tick(Duration::from_millis(50));
 
     let start = Instant::now();
 
