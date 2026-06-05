@@ -1,6 +1,8 @@
+mod cli;
 mod sql;
 mod utils;
 
+use clap::Parser;
 use core::time;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::{
@@ -11,6 +13,7 @@ use std::{
 
 use indicatif::{ProgressBar, ProgressStyle};
 
+use cli::Args;
 use utils::FileDetail;
 
 use crate::{
@@ -24,8 +27,19 @@ use crate::{
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cwd = std::env::current_dir()?;
+
+    let args: Args = Args::parse();
+    let path_to_parse: std::path::PathBuf;
+    let user_defined_path = args.path;
+
+    if user_defined_path.is_some() {
+        path_to_parse = cwd.join(user_defined_path.unwrap());
+    } else {
+        path_to_parse = cwd;
+    }
+
     let mut files: Vec<FileDetail> = vec![]; // this will have all files
-    match get_files(cwd.as_path(), &mut files) {
+    match get_files(path_to_parse.as_path(), &mut files) {
         Ok(x) => x,
         Err(x) => return Err(x),
     };
