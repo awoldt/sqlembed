@@ -92,7 +92,10 @@ pub fn is_valid_file_extension(file: &FileDetail) -> bool {
     return false;
 }
 
-pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
+pub fn chunk_text_file(
+    file: &FileDetail,
+    embedding_model: &mut TextEmbedding,
+) -> Result<Vec<Chunk>, Box<dyn Error>> {
     let f: File = File::open(&file.absolute_path)?;
     let mut buf_reader: BufReader<File> = BufReader::new(f);
 
@@ -102,16 +105,19 @@ pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text,  str.as_str());
+    extract_250_word_chunks(&mut chunks, &mut chunk_text, str.as_str());
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value and update to the embedding field on the struct
-    embed_chunks(&mut chunks)?;
+    embed_chunks(&mut chunks, embedding_model)?;
 
     return Ok(chunks);
 }
 
-pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
+pub fn chunk_pdf_file(
+    file: &FileDetail,
+    embedding_model: &mut TextEmbedding,
+) -> Result<Vec<Chunk>, Box<dyn Error>> {
     let pdf = PdfDocument::open(file.absolute_path.clone())?;
     if pdf.is_empty() {
         // no pages on pdf, just return success with no chunks
@@ -122,32 +128,38 @@ pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text,  str.as_str());
+    extract_250_word_chunks(&mut chunks, &mut chunk_text, str.as_str());
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value and update to the embedding field on the struct
-    embed_chunks(&mut chunks)?;
+    embed_chunks(&mut chunks, embedding_model)?;
 
     Ok(chunks)
 }
 
-pub fn chunk_docx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
+pub fn chunk_docx_file(
+    file: &FileDetail,
+    embedding_model: &mut TextEmbedding,
+) -> Result<Vec<Chunk>, Box<dyn Error>> {
     let doc: docx_lite::Document = parse_document_from_path(file.absolute_path.clone())?;
     let str: String = doc.extract_text();
 
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text,  str.as_str());
+    extract_250_word_chunks(&mut chunks, &mut chunk_text, str.as_str());
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value a-> Result<Vec<Chunk>, Box<dyn Error>>nd update to the embedding field on the struct
-    embed_chunks(&mut chunks)?;
+    embed_chunks(&mut chunks, embedding_model)?;
 
     return Ok(chunks);
 }
 
-pub fn chunk_pptx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
+pub fn chunk_pptx_file(
+    file: &FileDetail,
+    embedding_model: &mut TextEmbedding,
+) -> Result<Vec<Chunk>, Box<dyn Error>> {
     let ppt = rustypptx::parse_pptx(Path::new(&file.absolute_path))?;
 
     let str: String = ppt.to_markdown();
@@ -159,7 +171,7 @@ pub fn chunk_pptx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value a-> Result<Vec<Chunk>, Box<dyn Error>>nd update to the embedding field on the struct
-    embed_chunks(&mut chunks)?;
+    embed_chunks(&mut chunks, embedding_model)?;
 
     return Ok(chunks);
 }
@@ -192,18 +204,18 @@ fn extract_250_word_chunks(chunks: &mut Vec<Chunk>, chunk_text: &mut Vec<String>
     }
 }
 
-fn embed_chunks(chunks: &mut Vec<Chunk>) -> Result<(), Box<dyn Error>> {
-    let mut model: TextEmbedding =
-        TextEmbedding::try_new(InitOptions::new(EmbeddingModel::BGESmallENV15))?;
-
+fn embed_chunks(
+    chunks: &mut Vec<Chunk>,
+    embedding_model: &mut TextEmbedding,
+) -> Result<(), Box<dyn Error>> {
     let mut words: Vec<String> = vec![];
     for c in chunks.iter_mut() {
         words.push(c.content.clone())
     }
 
-    let embeddings = model.embed(words, None)?;
-    let num_of_chunks = chunks.len();
-    let num_of_embeddings = embeddings.len();
+    let embeddings: Vec<Vec<f32>> = embedding_model.embed(words, None)?;
+    let num_of_chunks: usize = chunks.len();
+    let num_of_embeddings: usize = embeddings.len();
 
     if num_of_embeddings != num_of_chunks {
         return Err("embedding count did not match chunk count".into());

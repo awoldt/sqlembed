@@ -2,6 +2,7 @@ mod sql;
 mod utils;
 
 use core::time;
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::{
     error::Error,
     ffi::{OsStr, OsString},
@@ -45,6 +46,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
+    // create the embedding model once outside of all the chunking logic
+    // so doesnt have to be recreated constantly
+    let mut embedding_model: TextEmbedding =
+        TextEmbedding::try_new(InitOptions::new(EmbeddingModel::BGESmallENV15))?;
+
     let mut file_results: Vec<FilesChunkResults> = vec![];
 
     let pb = ProgressBar::new_spinner();
@@ -57,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         pb.enable_steady_tick(Duration::from_millis(100));
 
         if f.extension == "txt" {
-            let chunk_results = match chunk_text_file(f) {
+            let chunk_results = match chunk_text_file(f, &mut embedding_model) {
                 Ok(x) => x,
                 Err(x) => return Err(x),
             };
@@ -69,7 +75,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if f.extension == "pdf" {
-            let chunk_results = match chunk_pdf_file(f) {
+            let chunk_results = match chunk_pdf_file(f, &mut embedding_model) {
                 Ok(x) => x,
                 Err(x) => return Err(x),
             };
@@ -81,7 +87,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if f.extension == "docx" {
-            let chunk_results = match chunk_docx_file(f) {
+            let chunk_results = match chunk_docx_file(f, &mut embedding_model) {
                 Ok(x) => x,
                 Err(x) => return Err(x),
             };
@@ -93,7 +99,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         if f.extension == "pptx" {
-            let chunk_results = match chunk_pptx_file(f) {
+            let chunk_results = match chunk_pptx_file(f, &mut embedding_model) {
                 Ok(x) => x,
                 Err(x) => return Err(x),
             };
@@ -110,17 +116,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let sql_string = generate_sql(&file_results, BGESmallENV15)?;
     write_sql_to_filesystem(&sql_string)?;
 
-    let num_of_chunks=  {
+    let num_of_chunks = {
         let mut i = 0;
         for f in file_results {
-           i += f.chunks.len() 
+            i += f.chunks.len()
         }
         i
     };
 
-    println!("=======================
+    println!(
+        "=======================
     Successfully parsed {} files and generated {} chunks in {:?} seconds
-    ", valid_files.len(), num_of_chunks, start.elapsed()
+    ",
+        valid_files.len(),
+        num_of_chunks,
+        start.elapsed()
     );
 
     return Ok(());
