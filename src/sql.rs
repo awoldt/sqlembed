@@ -2,7 +2,7 @@
     the whole point of this cli tool is to generate sql that you can
     quickly run against ur local sql database
 
-    will include 2 main table
+    will include 2 main tables
     - chunks
     - files
 
