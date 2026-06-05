@@ -55,12 +55,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let pb = ProgressBar::new_spinner();
     pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
+    pb.enable_steady_tick(Duration::from_millis(100));
 
     let start = Instant::now();
 
     for f in &valid_files {
         pb.set_message(format!("chunking {:?}", f.filename));
-        pb.enable_steady_tick(Duration::from_millis(100));
 
         if f.extension == "txt" {
             let chunk_results = match chunk_text_file(f, &mut embedding_model) {
@@ -111,7 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    pb.finish();
+    pb.finish_and_clear();
 
     let sql_string = generate_sql(&file_results, BGESmallENV15)?;
     write_sql_to_filesystem(&sql_string)?;
@@ -125,7 +125,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     println!(
-    "\n\n=======================
+        "\n\n=======================
 Successfully parsed {} files and generated {} chunks in {:.2?} seconds
     ",
         valid_files.len(),
