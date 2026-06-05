@@ -102,7 +102,7 @@ pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
+    extract_250_word_chunks(&mut chunks, &mut chunk_text,  str.as_str());
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value and update to the embedding field on the struct
@@ -122,7 +122,7 @@ pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
+    extract_250_word_chunks(&mut chunks, &mut chunk_text,  str.as_str());
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value and update to the embedding field on the struct
@@ -138,7 +138,7 @@ pub fn chunk_docx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
+    extract_250_word_chunks(&mut chunks, &mut chunk_text,  str.as_str());
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value a-> Result<Vec<Chunk>, Box<dyn Error>>nd update to the embedding field on the struct
@@ -155,7 +155,7 @@ pub fn chunk_pptx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
+    extract_250_word_chunks(&mut chunks, &mut chunk_text, str.as_str());
 
     // now that have all the chunks, need to embed each one
     // loop through the reutnred value a-> Result<Vec<Chunk>, Box<dyn Error>>nd update to the embedding field on the struct
@@ -164,7 +164,7 @@ pub fn chunk_pptx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
     return Ok(chunks);
 }
 
-fn extract_250_word_chunks(chunks: &mut Vec<Chunk>, chunk_text: &mut Vec<String>, str: String) {
+fn extract_250_word_chunks(chunks: &mut Vec<Chunk>, chunk_text: &mut Vec<String>, str: &str) {
     // helper function to extract entire text from files parsed into 250 chunks
     // before sending into embedding model
 

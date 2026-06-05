@@ -1,6 +1,7 @@
 mod sql;
 mod utils;
 
+use core::time;
 use std::{
     error::Error,
     ffi::{OsStr, OsString},
@@ -48,6 +49,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let pb = ProgressBar::new_spinner();
     pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
+
+    let start = Instant::now();
 
     for f in &valid_files {
         pb.set_message(format!("chunking {:?}", f.absolute_path));
@@ -106,6 +109,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let sql_string = generate_sql(&file_results, BGESmallENV15)?;
     write_sql_to_filesystem(&sql_string)?;
+
+    let num_of_chunks=  {
+        let mut i = 0;
+        for f in file_results {
+           i += f.chunks.len() 
+        }
+        i
+    };
+
+    println!("=======================
+    Successfully parsed {} files and generated {} chunks in {:?} seconds
+    ", valid_files.len(), num_of_chunks, start.elapsed()
+    );
 
     return Ok(());
 }
