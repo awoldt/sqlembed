@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let start = Instant::now();
 
     for f in &valid_files {
-        pb.set_message(format!("chunking {:?}", f.absolute_path));
+        pb.set_message(format!("chunking {:?}", f.filename));
         pb.enable_steady_tick(Duration::from_millis(100));
 
         if f.extension == "txt" {

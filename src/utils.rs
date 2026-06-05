@@ -15,6 +15,7 @@ pub const VALID_FILE_EXTENSIONS: [&str; 4] = ["txt", "pdf", "docx", "pptx"];
 pub struct FileDetail {
     pub extension: String,
     pub absolute_path: String,
+    pub filename: String,
 }
 
 #[derive(Debug)]
@@ -53,12 +54,18 @@ pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn 
             if ext.to_str().is_none() {
                 continue;
             }
+            if path.file_name().is_none() {
+                continue;
+            }
+
+            let filename = path.file_name().unwrap();
             let ext_str = ext.to_str().unwrap();
             let path_str = path.to_string_lossy().into_owned();
 
             files.push(FileDetail {
                 absolute_path: path_str,
                 extension: ext_str.to_string(),
+                filename: filename.to_string_lossy().into_owned(),
             });
         }
 
@@ -75,11 +82,20 @@ pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn 
     if ext.to_str().is_none() {
         return Ok(()); // early return
     }
-    let ext_str = ext.to_str().unwrap();
+
+    if dir.file_name().is_none() {
+        return Ok(()); // early return
+    }
+
+    let filename = dir.file_name();
+    if filename.is_none() {
+        return Ok(()); // early return
+    }
 
     files.push(FileDetail {
         absolute_path: path_str,
-        extension: ext_str.to_string(),
+        extension: ext.to_str().unwrap().to_string(),
+        filename: filename.unwrap().to_string_lossy().into_owned(),
     });
 
     Ok(())
