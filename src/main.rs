@@ -16,8 +16,9 @@ use utils::FileDetail;
 use crate::{
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{
-        EmbeddingModelUsed::BGESmallENV15, VALID_FILE_EXTENSIONS, chunk_docx_file, chunk_pdf_file,
-        chunk_pptx_file, chunk_text_file, get_files, is_valid_file_extension,
+        EmbeddingModelUsed::BGESmallENV15, TEXT_TYPE_EXTENSIONS, VALID_FILE_EXTENSIONS,
+        chunk_docx_file, chunk_pdf_file, chunk_pptx_file, chunk_text_file, get_files,
+        is_valid_file_extension,
     },
 };
 
@@ -62,7 +63,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     for f in &valid_files {
         pb.set_message(format!("chunking {:?}", f.filename));
 
-        if f.extension == "txt" {
+        // any valid "text" type file
+        if TEXT_TYPE_EXTENSIONS.contains(&f.extension.as_str()) {
             let chunk_results = match chunk_text_file(f, &mut embedding_model) {
                 Ok(x) => x,
                 Err(x) => return Err(x),

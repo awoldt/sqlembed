@@ -9,7 +9,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const VALID_FILE_EXTENSIONS: [&str; 4] = ["txt", "pdf", "docx", "pptx"];
+pub const VALID_FILE_EXTENSIONS: [&str; 6] = ["txt", "pdf", "docx", "pptx", "md", "json"];
+pub const TEXT_TYPE_EXTENSIONS: [&str; 3] = ["txt", "md", "json"]; // encompasses all file extensions that can use the "chunk_text_file" function
 
 #[derive(Debug)]
 pub struct FileDetail {
