@@ -126,7 +126,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!(
     "\n\n=======================
-Successfully parsed {} files and generated {} chunks in {:?} seconds
+Successfully parsed {} files and generated {} chunks in {:.2?} seconds
     ",
         valid_files.len(),
         num_of_chunks,
