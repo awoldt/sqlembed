@@ -9,12 +9,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const VALID_FILE_EXTENSIONS: [&str; 3] = ["txt", "pdf", "docx"];
+pub const VALID_FILE_EXTENSIONS: [&str; 4] = ["txt", "pdf", "docx", "pptx"];
 
 #[derive(Debug)]
 pub struct FileDetail {
-    pub path: String,
     pub extension: String,
+    pub absolute_path: String,
 }
 
 #[derive(Debug)]
@@ -57,7 +57,7 @@ pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn 
             let path_str = path.to_string_lossy().into_owned();
 
             files.push(FileDetail {
-                path: path_str,
+                absolute_path: path_str,
                 extension: ext_str.to_string(),
             });
         }
@@ -78,7 +78,7 @@ pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn 
     let ext_str = ext.to_str().unwrap();
 
     files.push(FileDetail {
-        path: path_str,
+        absolute_path: path_str,
         extension: ext_str.to_string(),
     });
 
@@ -93,7 +93,7 @@ pub fn is_valid_file_extension(file: &FileDetail) -> bool {
 }
 
 pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    let f: File = File::open(&file.path)?;
+    let f: File = File::open(&file.absolute_path)?;
     let mut buf_reader: BufReader<File> = BufReader::new(f);
 
     let mut str = String::new();
@@ -112,7 +112,7 @@ pub fn chunk_text_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
 }
 
 pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    let pdf = PdfDocument::open(file.path.clone())?;
+    let pdf = PdfDocument::open(file.absolute_path.clone())?;
     if pdf.is_empty() {
         // no pages on pdf, just return success with no chunks
         return Ok(vec![]);
@@ -132,7 +132,7 @@ pub fn chunk_pdf_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
 }
 
 pub fn chunk_docx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    let doc: docx_lite::Document = parse_document_from_path(file.path.clone())?;
+    let doc: docx_lite::Document = parse_document_from_path(file.absolute_path.clone())?;
     let str: String = doc.extract_text();
 
     let mut chunks: Vec<Chunk> = vec![];
@@ -141,7 +141,24 @@ pub fn chunk_docx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> 
     extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
 
     // now that have all the chunks, need to embed each one
-    // loop through the reutnred value and update to the embedding field on the struct
+    // loop through the reutnred value a-> Result<Vec<Chunk>, Box<dyn Error>>nd update to the embedding field on the struct
+    embed_chunks(&mut chunks)?;
+
+    return Ok(chunks);
+}
+
+pub fn chunk_pptx_file(file: &FileDetail) -> Result<Vec<Chunk>, Box<dyn Error>> {
+    let ppt = rustypptx::parse_pptx(Path::new(&file.absolute_path))?;
+
+    let str: String = ppt.to_markdown();
+
+    let mut chunks: Vec<Chunk> = vec![];
+    let mut chunk_text: Vec<String> = vec![];
+
+    extract_250_word_chunks(&mut chunks, &mut chunk_text, str);
+
+    // now that have all the chunks, need to embed each one
+    // loop through the reutnred value a-> Result<Vec<Chunk>, Box<dyn Error>>nd update to the embedding field on the struct
     embed_chunks(&mut chunks)?;
 
     return Ok(chunks);

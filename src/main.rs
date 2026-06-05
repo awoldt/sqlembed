@@ -15,7 +15,7 @@ use crate::{
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{
         EmbeddingModelUsed::BGESmallENV15, VALID_FILE_EXTENSIONS, chunk_docx_file, chunk_pdf_file,
-        chunk_text_file, get_files, is_valid_file_extension,
+        chunk_pptx_file, chunk_text_file, get_files, is_valid_file_extension,
     },
 };
 
@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
 
     for f in &valid_files {
-        pb.set_message(format!("chunking {:?}", f.path));
+        pb.set_message(format!("chunking {:?}", f.absolute_path));
         pb.enable_steady_tick(Duration::from_millis(100));
 
         if f.extension == "txt" {
@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(x) => return Err(x),
             };
             file_results.push(FilesChunkResults {
-                filename: f.path.to_string(),
+                filename: f.absolute_path.to_string(),
                 chunks: chunk_results,
                 file_extention: f.extension.to_string(),
             });
@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(x) => return Err(x),
             };
             file_results.push(FilesChunkResults {
-                filename: f.path.to_string(),
+                filename: f.absolute_path.to_string(),
                 chunks: chunk_results,
                 file_extention: f.extension.to_string(),
             });
@@ -83,7 +83,19 @@ fn main() -> Result<(), Box<dyn Error>> {
                 Err(x) => return Err(x),
             };
             file_results.push(FilesChunkResults {
-                filename: f.path.to_string(),
+                filename: f.absolute_path.to_string(),
+                chunks: chunk_results,
+                file_extention: f.extension.to_string(),
+            });
+        }
+
+        if f.extension == "pptx" {
+            let chunk_results = match chunk_pptx_file(f) {
+                Ok(x) => x,
+                Err(x) => return Err(x),
+            };
+            file_results.push(FilesChunkResults {
+                filename: f.absolute_path.to_string(),
                 chunks: chunk_results,
                 file_extention: f.extension.to_string(),
             });
