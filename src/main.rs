@@ -22,7 +22,6 @@ use crate::{
     utils::{
         EmbeddingModelUsed::BGESmallENV15, TEXT_TYPE_EXTENSIONS, VALID_FILE_EXTENSIONS,
         chunk_docx_file, chunk_pdf_file, chunk_pptx_file, chunk_text_file, get_files,
-        is_valid_file_extension,
     },
 };
 
@@ -35,35 +34,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     pb.enable_steady_tick(Duration::from_millis(100));
     pb.set_message("gathering files for chunking");
 
-    let mut files: Vec<FileDetail> = vec![]; // this will have all files
-    match get_files(&cli_config.path_to_parse.as_path(), &mut files) {
-        Ok(x) => x,
-        Err(x) => return Err(x),
-    };
+    let files = get_files(
+        &cli_config.path_to_parse.as_path(),
+        &cli_config.exts_to_parse,
+    )?;
 
-    // only use valid files
-    let mut valid_files: Vec<FileDetail> = vec![];
-    for f in files {
-        if !is_valid_file_extension(&f) {
-            continue;
-        }
-        valid_files.push(f);
-    }
-
-    if valid_files.len() == 0 {
+    if files.len() == 0 {
         pb.finish_and_clear();
         println!(
             "there are no files to embed. valid files extensions: {}",
             VALID_FILE_EXTENSIONS.join(", ")
         );
         return Ok(());
-    }
-
-    if cli_config.exts_to_parse.len() > 0 {
-        valid_files = valid_files
-            .into_iter()
-            .filter(|x| cli_config.exts_to_parse.contains(&x.extension))
-            .collect();
     }
 
     // create the embedding model once outside of all the chunking logic
@@ -75,7 +57,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let start = Instant::now();
 
-    for f in &valid_files {
+    for f in &files {
         pb.set_message(format!("chunking {:?}", f.filename));
 
         // any valid "text" type file
@@ -145,7 +127,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         "\n\n=======================
 Successfully parsed {} files and generated {} chunks in {:.2?} seconds
     ",
-        valid_files.len(),
+        files.len(),
         num_of_chunks,
         start.elapsed()
     );

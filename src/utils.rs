@@ -30,21 +30,27 @@ pub enum EmbeddingModelUsed {
     BGESmallENV15,
 }
 
-pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn Error>> {
-    // this function will read all files in a directory
-    // including files within all nested directories
+pub fn get_files(
+    dir: &Path,
+    exts_to_parse: &Vec<String>,
+) -> Result<Vec<FileDetail>, Box<dyn Error>> {
+    // this function will get all the "valid" files it finds in
+    // the directory user wants to parse from, also factoring
+    // in the specific extention types the user wants
 
-    // it will only return files that are "accepted" file extensions
+    let mut files: Vec<FileDetail> = vec![];
 
     if dir.is_dir() {
+        // directory of files
+        // loop through each
         for e in fs::read_dir(dir)? {
             let entry: DirEntry = e?;
             let path: PathBuf = entry.path();
 
-            // recursive loop
-            // read nested dir
+            // recursive loop, read nested dir
             if path.is_dir() {
-                get_files(&path.as_path(), files)?;
+                let mut nested_files: Vec<FileDetail> = get_files(&path.as_path(), exts_to_parse)?;
+                files.append(&mut nested_files);
                 continue;
             }
             if path.extension().is_none() {
@@ -63,6 +69,18 @@ pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn 
             let ext_str = ext.to_str().unwrap();
             let path_str = path.to_string_lossy().into_owned();
 
+            // make sure its a valid file extension
+            if !VALID_FILE_EXTENSIONS.contains(&ext_str) {
+                continue;
+            }
+
+            // check to see if the user only wants certain file extensions parsed
+            if exts_to_parse.len() > 0 {
+                if !exts_to_parse.contains(&ext_str.to_string()) {
+                    continue;
+                }
+            }
+
             files.push(FileDetail {
                 absolute_path: path_str,
                 extension: ext_str.to_string(),
@@ -70,43 +88,51 @@ pub fn get_files(dir: &Path, files: &mut Vec<FileDetail>) -> Result<(), Box<dyn 
             });
         }
 
-        return Ok(());
+        return Ok(files);
+    } else {
+        // single file
+        let path_str: String = dir.to_string_lossy().into_owned();
+        if dir.extension().is_none() {
+            return Ok(vec![]); // early return
+        }
+
+        let ext = dir.extension().unwrap();
+        if ext.to_str().is_none() {
+            return Ok(vec![]); // early return
+        }
+        if ext.to_str().is_none() {
+            return Ok(vec![]); // early return
+        }
+
+        // make sure its a valid file extension
+        if !VALID_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
+            return Ok(vec![]); // early return
+        }
+
+        // check to see if the user only wants certain file extensions parsed
+        if exts_to_parse.len() > 0 {
+            if !exts_to_parse.contains(&ext.to_str().unwrap().to_string()) {
+                return Ok(vec![]); // early return
+            }
+        }
+
+        if dir.file_name().is_none() {
+            return Ok(vec![]); // early return
+        }
+
+        let filename = dir.file_name();
+        if filename.is_none() {
+            return Ok(vec![]); // early return
+        }
+
+        files.push(FileDetail {
+            absolute_path: path_str,
+            extension: ext.to_str().unwrap().to_string(),
+            filename: filename.unwrap().to_string_lossy().into_owned(),
+        });
+
+        Ok(files)
     }
-
-    // single file
-    let path_str: String = dir.to_string_lossy().into_owned();
-    if dir.extension().is_none() {
-        return Ok(()); // early return
-    }
-
-    let ext = dir.extension().unwrap();
-    if ext.to_str().is_none() {
-        return Ok(()); // early return
-    }
-
-    if dir.file_name().is_none() {
-        return Ok(()); // early return
-    }
-
-    let filename = dir.file_name();
-    if filename.is_none() {
-        return Ok(()); // early return
-    }
-
-    files.push(FileDetail {
-        absolute_path: path_str,
-        extension: ext.to_str().unwrap().to_string(),
-        filename: filename.unwrap().to_string_lossy().into_owned(),
-    });
-
-    Ok(())
-}
-
-pub fn is_valid_file_extension(file: &FileDetail) -> bool {
-    if VALID_FILE_EXTENSIONS.contains(&file.extension.as_str()) {
-        return true;
-    }
-    return false;
 }
 
 pub fn chunk_text_file(
