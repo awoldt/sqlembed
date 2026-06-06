@@ -17,6 +17,7 @@ use cli::Args;
 use utils::FileDetail;
 
 use crate::{
+    cli::get_cli_config,
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{
         EmbeddingModelUsed::BGESmallENV15, TEXT_TYPE_EXTENSIONS, VALID_FILE_EXTENSIONS,
@@ -26,28 +27,19 @@ use crate::{
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let cwd = std::env::current_dir()?;
-
     let args: Args = Args::parse();
-    let path_to_parse: std::path::PathBuf;
-    let user_defined_path = args.path;
+    let cli_config: cli::CliConfig = get_cli_config(&args)?;
 
-    if user_defined_path.is_some() {
-        path_to_parse = cwd.join(user_defined_path.unwrap());
-    } else {
-        path_to_parse = cwd;
-    }
-
-    let mut files: Vec<FileDetail> = vec![]; // this will have all files
-    match get_files(path_to_parse.as_path(), &mut files) {
-        Ok(x) => x,
-        Err(x) => return Err(x),
-    };
-
-    let pb = ProgressBar::new_spinner();
+    let pb: ProgressBar = ProgressBar::new_spinner();
     pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
     pb.enable_steady_tick(Duration::from_millis(100));
     pb.set_message("gathering files for chunking");
+
+    let mut files: Vec<FileDetail> = vec![]; // this will have all files
+    match get_files(&cli_config.path_to_parse.as_path(), &mut files) {
+        Ok(x) => x,
+        Err(x) => return Err(x),
+    };
 
     // only use valid files
     let mut valid_files: Vec<FileDetail> = vec![];
@@ -60,12 +52,18 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if valid_files.len() == 0 {
         pb.finish_and_clear();
-
         println!(
             "there are no files to embed. valid files extensions: {}",
             VALID_FILE_EXTENSIONS.join(", ")
         );
         return Ok(());
+    }
+
+    if cli_config.exts_to_parse.len() > 0 {
+        valid_files = valid_files
+            .into_iter()
+            .filter(|x| cli_config.exts_to_parse.contains(&x.extension))
+            .collect();
     }
 
     // create the embedding model once outside of all the chunking logic
