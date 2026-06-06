@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let pb = ProgressBar::new_spinner();
     pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
-    pb.enable_steady_tick(Duration::from_millis(50));
+    pb.enable_steady_tick(Duration::from_millis(100));
     pb.set_message("gathering files for chunking");
 
     // only use valid files
@@ -59,6 +59,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     if valid_files.len() == 0 {
+        pb.finish_and_clear();
+
         println!(
             "there are no files to embed. valid files extensions: {}",
             VALID_FILE_EXTENSIONS.join(", ")
