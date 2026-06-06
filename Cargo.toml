@@ -9,6 +9,4 @@ docx-lite = "0.2.0"
 fastembed = "5.15.0"
 indicatif = "0.18.4"
 pdfsink-rs = "0.2.8"
-reqwest = {version = "0.13.4", features = ["blocking"]}
 rustypptx = "0.2.0"
-serde_json = "1.0.150"
