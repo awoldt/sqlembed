@@ -1,16 +1,14 @@
-use docx_lite::{ExtractOptions, parse_document_from_path};
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use docx_lite::parse_document_from_path;
+use fastembed::TextEmbedding;
 use pdfsink_rs::PdfDocument;
 use std::{
     error::Error,
-    ffi::OsString,
     fs::{self, DirEntry, File},
-    io::{BufRead, BufReader, Read},
+    io::{BufReader, Read},
     path::{Path, PathBuf},
 };
 
 pub const VALID_FILE_EXTENSIONS: [&str; 6] = ["txt", "pdf", "docx", "pptx", "md", "json"];
-pub const TEXT_TYPE_EXTENSIONS: [&str; 3] = ["txt", "md", "json"]; // encompasses all file extensions that can use the "chunk_text_file" function
 
 #[derive(Debug)]
 pub struct FileDetail {

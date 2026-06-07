@@ -3,11 +3,9 @@ mod sql;
 mod utils;
 
 use clap::Parser;
-use core::time;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::{
     error::Error,
-    ffi::{OsStr, OsString},
     time::{Duration, Instant},
 };
 
