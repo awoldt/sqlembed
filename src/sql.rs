@@ -17,16 +17,19 @@ pub struct FilesChunkResults {
     pub chunks: Vec<Chunk>,
 }
 
-use crate::utils::{Chunk, EmbeddingModelUsed};
+use fastembed::EmbeddingModel;
+
+use crate::utils::{Chunk};
 
 pub fn generate_sql(
     chunks: &Vec<FilesChunkResults>,
-    embedding_model: EmbeddingModelUsed,
+    embedding_model: EmbeddingModel,
 ) -> Result<String, Box<dyn Error>> {
     // the dimensions of the vectors depend on the model used to embed
-    let mut dimensionality = 0;
+    let dimensionality;
+
     match embedding_model {
-        EmbeddingModelUsed::BGESmallENV15 => dimensionality = 384,
+        EmbeddingModel::BGESmallENV15 => dimensionality = 384,
         _ => {
             return Err("must use a valid embedding model
              "

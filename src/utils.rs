@@ -23,11 +23,6 @@ pub struct Chunk {
     pub embedding: Vec<f32>, // the vectors that represents this chunk of text
 }
 
-#[derive(PartialEq)]
-pub enum EmbeddingModelUsed {
-    BGESmallENV15,
-}
-
 pub fn get_files(
     dir: &Path,
     exts_to_parse: &Vec<String>,

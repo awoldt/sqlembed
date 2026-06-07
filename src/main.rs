@@ -17,10 +17,7 @@ use utils::FileDetail;
 use crate::{
     cli::get_cli_config,
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
-    utils::{
-        EmbeddingModelUsed::BGESmallENV15, VALID_FILE_EXTENSIONS, chunk_text, embed_chunks,
-        extract_text_from_file, get_files,
-    },
+    utils::{VALID_FILE_EXTENSIONS, chunk_text, embed_chunks, extract_text_from_file, get_files},
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -79,7 +76,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     pb.finish_and_clear();
 
-    let sql_string = generate_sql(&file_results, BGESmallENV15)?;
+    let sql_string = generate_sql(&file_results, EmbeddingModel::BGESmallENV15)?;
     write_sql_to_filesystem(&sql_string)?;
 
     let num_of_chunks = {
