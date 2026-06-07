@@ -15,7 +15,7 @@ use cli::Args;
 use utils::FileDetail;
 
 use crate::{
-    cli::{Commands},
+    cli::Commands,
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{VALID_FILE_EXTENSIONS, chunk_text, embed_chunks, extract_text_from_file, get_files},
 };
@@ -24,8 +24,31 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Args = Args::parse();
 
     match args.command {
+        Commands::List {} => {
+            struct ModelList {
+                str_name: String,
+                model: EmbeddingModel,
+            }
+
+            let mut models: Vec<ModelList> = TextEmbedding::list_supported_models()
+                .iter()
+                .map(|x| ModelList {
+                    str_name: x.model_code.clone(),
+                    model: x.model.clone(),
+                })
+                .collect();
+            models.sort_by_key(|x| x.str_name.clone());
+
+            println!("Supported models:");
+            for m in models {
+                println!("{:?} | ({:?})", m.model, m.str_name)
+            }
+            return Ok(());
+        }
+
         Commands::Chunk { path, exts, model } => {
-            let cli_config: cli::CliChunkConfig = Commands::get_cli_chunk_config(path, exts, model)?;
+            let cli_config: cli::CliChunkConfig =
+                Commands::get_cli_chunk_config(path, exts, model)?;
 
             let files: Vec<FileDetail> = get_files(
                 &cli_config.path_to_parse.as_path(),

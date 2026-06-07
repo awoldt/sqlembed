@@ -25,6 +25,8 @@ pub enum Commands {
         #[arg(long)]
         model: Option<String>,
     },
+
+    List {}
 }
 
 impl Commands {
