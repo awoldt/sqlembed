@@ -135,95 +135,51 @@ pub fn get_files(
     }
 }
 
-pub fn chunk_text_file(
-    file: &FileDetail,
-    embedding_model: &mut TextEmbedding,
-) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    let f: File = File::open(&file.absolute_path)?;
-    let mut buf_reader: BufReader<File> = BufReader::new(f);
+pub fn extract_text_from_file(file: &FileDetail) -> Result<String, Box<dyn Error>> {
+    match file.extension.as_str() {
+        "txt" | "json" | "md" => {
+            let f: File = File::open(&file.absolute_path)?;
+            let mut buf_reader: BufReader<File> = BufReader::new(f);
+            let mut str = String::new();
+            buf_reader.read_to_string(&mut str)?;
+            Ok(str)
+        }
 
-    let mut str = String::new();
-    buf_reader.read_to_string(&mut str)?;
+        "pdf" => {
+            let pdf = PdfDocument::open(file.absolute_path.clone())?;
+            if pdf.is_empty() {
+                // no pages on pdf, just return success with no chunks
+                return Ok(String::new());
+            }
+            let str = pdf.extract_text();
+            Ok(str)
+        }
 
-    let mut chunks: Vec<Chunk> = vec![];
-    let mut chunk_text: Vec<String> = vec![];
+        "docx" => {
+            let doc: docx_lite::Document = parse_document_from_path(file.absolute_path.clone())?;
+            let str: String = doc.extract_text();
+            Ok(str)
+        }
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text, str.as_str());
+        "pptx" => {
+            let ppt = rustypptx::parse_pptx(Path::new(&file.absolute_path))?;
+            let str: String = ppt.to_markdown();
+            Ok(str)
+        }
 
-    // now that have all the chunks, need to embed each one
-    // loop through the reutnred value and update to the embedding field on the struct
-    embed_chunks(&mut chunks, embedding_model)?;
-
-    return Ok(chunks);
-}
-
-pub fn chunk_pdf_file(
-    file: &FileDetail,
-    embedding_model: &mut TextEmbedding,
-) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    let pdf = PdfDocument::open(file.absolute_path.clone())?;
-    if pdf.is_empty() {
-        // no pages on pdf, just return success with no chunks
-        return Ok(vec![]);
+        _ => {
+            return Err("not a valid file extension to chunk".into());
+        }
     }
-    let str = pdf.extract_text();
+}
+
+pub fn chunk_text(file_text: &str) -> Vec<Chunk> {
+    // take the file text and splits into "chunks"
 
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
-    extract_250_word_chunks(&mut chunks, &mut chunk_text, str.as_str());
-
-    // now that have all the chunks, need to embed each one
-    // loop through the reutnred value and update to the embedding field on the struct
-    embed_chunks(&mut chunks, embedding_model)?;
-
-    Ok(chunks)
-}
-
-pub fn chunk_docx_file(
-    file: &FileDetail,
-    embedding_model: &mut TextEmbedding,
-) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    let doc: docx_lite::Document = parse_document_from_path(file.absolute_path.clone())?;
-    let str: String = doc.extract_text();
-
-    let mut chunks: Vec<Chunk> = vec![];
-    let mut chunk_text: Vec<String> = vec![];
-
-    extract_250_word_chunks(&mut chunks, &mut chunk_text, str.as_str());
-
-    // now that have all the chunks, need to embed each one
-    // loop through the reutnred value a-> Result<Vec<Chunk>, Box<dyn Error>>nd update to the embedding field on the struct
-    embed_chunks(&mut chunks, embedding_model)?;
-
-    return Ok(chunks);
-}
-
-pub fn chunk_pptx_file(
-    file: &FileDetail,
-    embedding_model: &mut TextEmbedding,
-) -> Result<Vec<Chunk>, Box<dyn Error>> {
-    let ppt = rustypptx::parse_pptx(Path::new(&file.absolute_path))?;
-
-    let str: String = ppt.to_markdown();
-
-    let mut chunks: Vec<Chunk> = vec![];
-    let mut chunk_text: Vec<String> = vec![];
-
-    extract_250_word_chunks(&mut chunks, &mut chunk_text, str.as_str());
-
-    // now that have all the chunks, need to embed each one
-    // loop through the reutnred value a-> Result<Vec<Chunk>, Box<dyn Error>>nd update to the embedding field on the struct
-    embed_chunks(&mut chunks, embedding_model)?;
-
-    return Ok(chunks);
-}
-
-fn extract_250_word_chunks(chunks: &mut Vec<Chunk>, chunk_text: &mut Vec<String>, str: &str) {
-    // helper function to extract entire text from files parsed into 250 chunks
-    // before sending into embedding model
-
-    for word in str.split_whitespace() {
+    for word in file_text.split_whitespace() {
         if chunk_text.len() >= 250 {
             // once hit 250 words, build the next chunk
             chunks.push(Chunk {
@@ -245,9 +201,11 @@ fn extract_250_word_chunks(chunks: &mut Vec<Chunk>, chunk_text: &mut Vec<String>
         });
         chunk_text.clear();
     }
+
+    chunks
 }
 
-fn embed_chunks(
+pub fn embed_chunks(
     chunks: &mut Vec<Chunk>,
     embedding_model: &mut TextEmbedding,
 ) -> Result<(), Box<dyn Error>> {

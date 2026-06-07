@@ -41,7 +41,7 @@ pub fn generate_sql(
             "
         CREATE TABLE files(
             file_id INT PRIMARY KEY,
-            absolute_path TEXT NOT NULL,
+            file_name TEXT NOT NULL,
             extension VARCHAR(250) NOT NULL
         );
 
@@ -67,7 +67,7 @@ pub fn generate_sql(
 
         str.push_str(
             format!(
-                "INSERT INTO files(file_id, absolute_path, extension) VALUES({},'{}','{}');\n",
+                "INSERT INTO files(file_id, file_name, extension) VALUES({},'{}','{}');\n",
                 file_id, chunk.filename, chunk.file_extention
             )
             .as_str(),

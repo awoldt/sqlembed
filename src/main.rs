@@ -20,8 +20,8 @@ use crate::{
     cli::get_cli_config,
     sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
     utils::{
-        EmbeddingModelUsed::BGESmallENV15, TEXT_TYPE_EXTENSIONS, VALID_FILE_EXTENSIONS,
-        chunk_docx_file, chunk_pdf_file, chunk_pptx_file, chunk_text_file, get_files,
+        EmbeddingModelUsed::BGESmallENV15, VALID_FILE_EXTENSIONS, chunk_text, embed_chunks,
+        extract_text_from_file, get_files,
     },
 };
 
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     pb.enable_steady_tick(Duration::from_millis(100));
     pb.set_message("gathering files for chunking");
 
-    let files = get_files(
+    let files: Vec<FileDetail> = get_files(
         &cli_config.path_to_parse.as_path(),
         &cli_config.exts_to_parse,
     )?;
@@ -60,54 +60,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     for f in &files {
         pb.set_message(format!("chunking {:?}", f.filename));
 
-        // any valid "text" type file
-        if TEXT_TYPE_EXTENSIONS.contains(&f.extension.as_str()) {
-            let chunk_results = match chunk_text_file(f, &mut embedding_model) {
-                Ok(x) => x,
-                Err(x) => return Err(x),
-            };
-            file_results.push(FilesChunkResults {
-                filename: f.absolute_path.to_string(),
-                chunks: chunk_results,
-                file_extention: f.extension.to_string(),
-            });
-        }
+        // 1. extract text from files
+        let file_text = extract_text_from_file(&f)?;
 
-        if f.extension == "pdf" {
-            let chunk_results = match chunk_pdf_file(f, &mut embedding_model) {
-                Ok(x) => x,
-                Err(x) => return Err(x),
-            };
-            file_results.push(FilesChunkResults {
-                filename: f.absolute_path.to_string(),
-                chunks: chunk_results,
-                file_extention: f.extension.to_string(),
-            });
-        }
+        // 2. extract chunks from text
+        let mut chunks = chunk_text(&file_text);
 
-        if f.extension == "docx" {
-            let chunk_results = match chunk_docx_file(f, &mut embedding_model) {
-                Ok(x) => x,
-                Err(x) => return Err(x),
-            };
-            file_results.push(FilesChunkResults {
-                filename: f.absolute_path.to_string(),
-                chunks: chunk_results,
-                file_extention: f.extension.to_string(),
-            });
-        }
+        // 3. embed each chunk and set the embedding field on the struct
+        embed_chunks(&mut chunks, &mut embedding_model)?;
 
-        if f.extension == "pptx" {
-            let chunk_results = match chunk_pptx_file(f, &mut embedding_model) {
-                Ok(x) => x,
-                Err(x) => return Err(x),
-            };
-            file_results.push(FilesChunkResults {
-                filename: f.absolute_path.to_string(),
-                chunks: chunk_results,
-                file_extention: f.extension.to_string(),
-            });
-        }
+        file_results.push(FilesChunkResults {
+            filename: f.filename.clone(),
+            file_extention: f.extension.clone(),
+            chunks,
+        });
     }
 
     pb.finish_and_clear();
