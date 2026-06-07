@@ -29,18 +29,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args: Args = Args::parse();
     let cli_config: cli::CliConfig = get_cli_config(&args)?;
 
-    let pb: ProgressBar = ProgressBar::new_spinner();
-    pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
-    pb.enable_steady_tick(Duration::from_millis(100));
-    pb.set_message("gathering files for chunking");
-
     let files: Vec<FileDetail> = get_files(
         &cli_config.path_to_parse.as_path(),
         &cli_config.exts_to_parse,
     )?;
 
     if files.len() == 0 {
-        pb.finish_and_clear();
         println!(
             "there are no files to embed. valid files extensions: {}",
             VALID_FILE_EXTENSIONS.join(", ")
@@ -55,10 +49,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut file_results: Vec<FilesChunkResults> = vec![];
 
+    let pb: ProgressBar = ProgressBar::new_spinner();
+    pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
+    pb.enable_steady_tick(Duration::from_millis(100));
+
     let start = Instant::now();
 
-    for f in &files {
-        pb.set_message(format!("chunking {:?}", f.filename));
+    for (i, f) in files.iter().enumerate() {
+        pb.set_message(format!(
+            "File {:?}/{:?} | {:?}",
+            i + 1,
+            files.len(),
+            f.filename
+        ));
 
         // 1. extract text from files
         let file_text = extract_text_from_file(&f)?;
