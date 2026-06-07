@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     pb.finish_and_clear();
 
-    let sql_string = generate_sql(&file_results, EmbeddingModel::BGESmallENV15)?;
+    let sql_string = generate_sql(&file_results, cli_config.model_to_use)?;
     write_sql_to_filesystem(&sql_string)?;
 
     let num_of_chunks = {

@@ -17,26 +17,14 @@ pub struct FilesChunkResults {
     pub chunks: Vec<Chunk>,
 }
 
-use fastembed::EmbeddingModel;
+use fastembed::{EmbeddingModel, ModelInfo};
 
-use crate::utils::{Chunk};
+use crate::utils::Chunk;
 
 pub fn generate_sql(
     chunks: &Vec<FilesChunkResults>,
-    embedding_model: EmbeddingModel,
+    embedding_model: ModelInfo<EmbeddingModel>,
 ) -> Result<String, Box<dyn Error>> {
-    // the dimensions of the vectors depend on the model used to embed
-    let dimensionality;
-
-    match embedding_model {
-        EmbeddingModel::BGESmallENV15 => dimensionality = 384,
-        _ => {
-            return Err("must use a valid embedding model
-             "
-            .into());
-        }
-    }
-
     // generate sql create tables query
     let mut str: String = String::new();
     str.push_str(
@@ -57,7 +45,7 @@ pub fn generate_sql(
             FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
         );
     ",
-            dimensionality
+            embedding_model.dim
         )
         .as_str(),
     );
