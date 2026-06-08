@@ -1,12 +1,13 @@
 /*
     the whole point of this cli tool is to generate sql that you can
-    quickly run against ur local sql database
+    quickly run against ur local postgres database
 
     will include 2 main tables
     - chunks
     - files
 
-    tons and tons of chunk files. each chunk has an association with a file
+    each chunk inserted will include the appropriate dimensions based on the 
+    embedding model used
 */
 
 use std::error::Error;
