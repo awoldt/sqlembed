@@ -29,21 +29,20 @@ pub fn generate_sql(
     let mut str: String = String::new();
     str.push_str(
         format!(
-            "
-        CREATE TABLE files(
-            file_id INT PRIMARY KEY,
-            file_name TEXT NOT NULL,
-            extension VARCHAR(250) NOT NULL
-        );
+            "CREATE TABLE files(
+    file_id INT PRIMARY KEY,
+    file_name TEXT NOT NULL,
+    extension VARCHAR(250) NOT NULL
+);
 
-        CREATE EXTENSION IF NOT EXISTS vector;
-        CREATE TABLE chunks(
-            chunk_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-            content TEXT NOT NULL,
-            embeddings VECTOR({}) NOT NULL,
-            file_id INT NOT NULL,
-            FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
-        );
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE chunks(
+    chunk_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    content TEXT NOT NULL,
+    embeddings VECTOR({}) NOT NULL,
+    file_id INT NOT NULL,
+    FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
+);
     ",
             embedding_model.dim
         )
