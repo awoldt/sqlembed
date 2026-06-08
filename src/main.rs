@@ -46,9 +46,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             return Ok(());
         }
 
-        Commands::Chunk { path, exts, model } => {
+        Commands::Chunk {
+            path,
+            exts,
+            model,
+            size,
+        } => {
             let cli_config: cli::CliChunkConfig =
-                Commands::get_cli_chunk_config(path, exts, model)?;
+                Commands::get_cli_chunk_config(path, exts, model, size)?;
 
             let files: Vec<FileDetail> = get_files(
                 &cli_config.path_to_parse.as_path(),
@@ -88,7 +93,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let file_text = extract_text_from_file(&f)?;
 
                 // 2. extract chunks from text
-                let mut chunks = chunk_text(&file_text);
+                let mut chunks = chunk_text(&file_text, &cli_config.chunk_size);
 
                 // 3. embed each chunk and set the embedding field on the struct
                 embed_chunks(&mut chunks, &mut embedding_model)?;

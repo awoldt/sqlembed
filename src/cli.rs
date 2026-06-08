@@ -24,6 +24,9 @@ pub enum Commands {
 
         #[arg(long)]
         model: Option<String>,
+
+        #[arg(long)]
+        size: Option<i32> // size of each chunk
     },
 
     List {}
@@ -34,6 +37,7 @@ impl Commands {
         path: Option<String>,
         exts: Option<String>,
         model: Option<String>,
+        size: Option<i32>
     ) -> Result<CliChunkConfig, Box<dyn Error>> {
         let user_defined_path = path;
         let user_defined_exts = exts;
@@ -92,10 +96,19 @@ impl Commands {
             model_to_use = models.unwrap();
         }
 
+        // set hte chunk size
+        let chunk_size: i32;
+        if size.is_none() {
+            chunk_size = 250 // defualt
+        } else {
+            chunk_size = size.unwrap();
+        }
+
         Ok(CliChunkConfig {
             path_to_parse,
             exts_to_parse,
             model_to_use,
+            chunk_size
         })
     }
 }
@@ -104,4 +117,5 @@ pub struct CliChunkConfig {
     pub path_to_parse: PathBuf,
     pub exts_to_parse: Vec<String>,
     pub model_to_use: ModelInfo<EmbeddingModel>,
+    pub chunk_size: i32
 }

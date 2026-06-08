@@ -166,15 +166,14 @@ pub fn extract_text_from_file(file: &FileDetail) -> Result<String, Box<dyn Error
     }
 }
 
-pub fn chunk_text(file_text: &str) -> Vec<Chunk> {
+pub fn chunk_text(file_text: &str, chunk_size: &i32) -> Vec<Chunk> {
     // take the file text and splits into "chunks"
 
     let mut chunks: Vec<Chunk> = vec![];
     let mut chunk_text: Vec<String> = vec![];
 
     for word in file_text.split_whitespace() {
-        if chunk_text.len() >= 250 {
-            // once hit 250 words, build the next chunk
+        if chunk_text.len() >= *chunk_size as usize {
             chunks.push(Chunk {
                 content: chunk_text.join(" "),
                 embedding: vec![], // will be set at later step
