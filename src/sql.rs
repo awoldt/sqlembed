@@ -29,7 +29,9 @@ pub fn generate_sql(
     let mut str: String = String::new();
     str.push_str(
         format!(
-            "CREATE TABLE files(
+            " -- text embedding model used: {} ({})
+
+CREATE TABLE files(
     file_id INT PRIMARY KEY,
     file_name TEXT NOT NULL,
     extension VARCHAR(250) NOT NULL
@@ -44,7 +46,7 @@ CREATE TABLE chunks(
     FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
 );
     ",
-            embedding_model.dim
+            embedding_model.model, embedding_model.model_code, embedding_model.dim
         )
         .as_str(),
     );
