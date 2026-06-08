@@ -26,7 +26,7 @@ pub enum Commands {
         model: Option<String>,
 
         #[arg(long)]
-        size: Option<i32> // size of each chunk
+        size: Option<i32> 
     },
 
     List {}

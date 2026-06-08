@@ -6,7 +6,7 @@ You must have the pgvector extension installed on the target database for insert
 
 ### `chunk`
 
-Parse files and generate and sql query that will include: 
+The final sql query generated will include: 
 - files table 
 - chunks table
 
