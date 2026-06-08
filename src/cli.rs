@@ -17,6 +17,7 @@ pub struct Args {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     Chunk {
+        #[arg(long)]
         path: Option<String>,
 
         #[arg(long)]
