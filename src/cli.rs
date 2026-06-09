@@ -8,6 +8,14 @@ use fastembed::{
 
 use crate::utils::VALID_FILE_EXTENSIONS;
 
+pub struct CliChunkConfig {
+    pub path_to_parse: PathBuf,
+    pub exts_to_parse: Vec<String>,
+    pub model_to_use: ModelInfo<EmbeddingModel>,
+    pub chunk_size: i32,
+    pub output_filename: String,
+}
+
 #[derive(Parser, Debug)]
 pub struct Args {
     #[command(subcommand)]
@@ -27,10 +35,13 @@ pub enum Commands {
         model: Option<String>,
 
         #[arg(long)]
-        size: Option<i32> 
+        size: Option<i32>,
+
+        #[arg(long)]
+        output: Option<String>,
     },
 
-    List {}
+    List {},
 }
 
 impl Commands {
@@ -38,7 +49,8 @@ impl Commands {
         path: Option<String>,
         exts: Option<String>,
         model: Option<String>,
-        size: Option<i32>
+        size: Option<i32>,
+        output: Option<String>,
     ) -> Result<CliChunkConfig, Box<dyn Error>> {
         let user_defined_path = path;
         let user_defined_exts = exts;
@@ -105,18 +117,20 @@ impl Commands {
             chunk_size = size.unwrap();
         }
 
+        // set the final sql file output filename
+        let mut output_filename = String::new();
+        if output.is_none() {
+            output_filename = "sql".to_string();
+        } else {
+            output_filename = output.unwrap()
+        }
+
         Ok(CliChunkConfig {
             path_to_parse,
             exts_to_parse,
             model_to_use,
-            chunk_size
+            chunk_size,
+            output_filename,
         })
     }
-}
-
-pub struct CliChunkConfig {
-    pub path_to_parse: PathBuf,
-    pub exts_to_parse: Vec<String>,
-    pub model_to_use: ModelInfo<EmbeddingModel>,
-    pub chunk_size: i32
 }

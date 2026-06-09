@@ -6,7 +6,7 @@
     - chunks
     - files
 
-    each chunk inserted will include the appropriate dimensions based on the 
+    each chunk inserted will include the appropriate dimensions based on the
     embedding model used
 */
 
@@ -83,11 +83,11 @@ CREATE TABLE chunks(
     return Ok(str.to_owned());
 }
 
-pub fn write_sql_to_filesystem(query: &str) -> Result<(), Box<dyn Error>> {
+pub fn write_sql_to_filesystem(query: &str, filename: &str) -> Result<(), Box<dyn Error>> {
     // this function will take the final sql queries generated above and
     // write to a single ".sql" file in the cwd
 
-    std::fs::write("sql.sql", query)?;
+    std::fs::write(format!("{}.sql", filename), query)?;
 
     Ok(())
 }

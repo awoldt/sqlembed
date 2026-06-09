@@ -51,9 +51,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             exts,
             model,
             size,
+            output,
         } => {
             let cli_config: cli::CliChunkConfig =
-                Commands::get_cli_chunk_config(path, exts, model, size)?;
+                Commands::get_cli_chunk_config(path, exts, model, size, output)?;
 
             let files: Vec<FileDetail> = get_files(
                 &cli_config.path_to_parse.as_path(),
@@ -108,7 +109,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             pb.finish_and_clear();
 
             let sql_string = generate_sql(&file_results, cli_config.model_to_use)?;
-            write_sql_to_filesystem(&sql_string)?;
+            write_sql_to_filesystem(&sql_string, &cli_config.output_filename)?;
 
             let num_of_chunks = {
                 let mut i = 0;
