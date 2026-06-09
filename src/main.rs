@@ -120,12 +120,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
 
             println!(
-                "\n\n=======================
-Successfully parsed {} files and generated {} chunks in {:.2?} seconds
-    ",
+                "=======================
+Files Parsed : {}
+Chunks Created: {}
+Elapsed Time : {:.2?}
+Output SQL   : {}.sql
+=======================",
                 files.len(),
                 num_of_chunks,
-                start.elapsed()
+                start.elapsed(),
+                &cli_config.output_filename
             );
 
             return Ok(());
