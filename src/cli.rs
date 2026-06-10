@@ -120,7 +120,7 @@ impl Commands {
         // set the final sql file output filename
         let mut output_filename = String::new();
         if output.is_none() {
-            output_filename = "sql".to_string();
+            output_filename = "output".to_string();
         } else {
             output_filename = output.unwrap()
         }
