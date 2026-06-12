@@ -51,10 +51,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             exts,
             model,
             size,
-            output,
+            out,
         } => {
             let cli_config: cli::CliChunkConfig =
-                Commands::get_cli_chunk_config(path, exts, model, size, output)?;
+                Commands::get_cli_chunk_config(path, exts, model, size, out)?;
 
             let files: Vec<FileDetail> = get_files(
                 &cli_config.path_to_parse.as_path(),

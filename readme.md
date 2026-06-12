@@ -11,7 +11,7 @@ The final sql query generated will include two tables creations and inserts for 
 - chunks
 
 ```bash
-ezvector chunk [--path <path>] [--exts <exts>] [--model <model>] [--size <size>] [--output <output>]
+ezvector chunk [--path <path>] [--exts <exts>] [--model <model>] [--size <size>] [--out <output>]
 ```
 
 | Flag | Required | Description |
@@ -20,7 +20,7 @@ ezvector chunk [--path <path>] [--exts <exts>] [--model <model>] [--size <size>]
 | `--exts` | no | Comma-separated file extensions to include (e.g. `pdf,txt`). Defaults to all supported extensions. |
 | `--model` | no | Embedding model to use. Defaults to `BGESmallENV15`. Run `ezvector list` to see options. |
 | `--size` | no | Number of words per chunk. Defaults to `250`. |
-| `--output` | no | Output SQL filename without extension. Defaults to `output` (writes `output.sql`). |
+| `--out` | no | Output SQL filename without extension. Defaults to `output` (writes `output.sql`). |
 
 Supported file extensions: `txt`, `pdf`, `docx`, `pptx`, `md`, `json`
 
@@ -31,7 +31,7 @@ ezvector chunk
 ezvector chunk --path ./docs
 ezvector chunk --path ./docs --exts pdf,md
 ezvector chunk --path ./docs --exts pdf --model BGESmallENV15
-ezvector chunk --path ./docs --size 500 --output my-data
+ezvector chunk --path ./docs --size 500 --out my-data
 ```
 
 ### `list`

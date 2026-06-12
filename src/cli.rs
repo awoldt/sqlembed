@@ -38,7 +38,7 @@ pub enum Commands {
         size: Option<i32>,
 
         #[arg(long)]
-        output: Option<String>,
+        out: Option<String>,
     },
 
     List {},
