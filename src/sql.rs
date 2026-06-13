@@ -44,10 +44,6 @@ pub fn copy_chunks(
     // use a transaction!
     let mut transaction = client.transaction()?;
 
-    // we need to add the vector extension so we can get oid of the "vector"
-    // column that will be used for embeddings
-    transaction.query("CREATE EXTENSION IF NOT EXISTS vector;", &[])?;
-
     // create the tables first
     transaction.batch_execute(&format!(
         "
@@ -77,10 +73,11 @@ pub fn copy_chunks(
     writer.finish()?;
 
     // insert chunks
-    let mut writer = transaction.copy_in("COPY chunks (content, embeddings, file_id) FROM STDIN")?;
+    let mut writer =
+        transaction.copy_in("COPY chunks (content, embeddings, file_id) FROM STDIN")?;
     for (i, f) in chunks.iter().enumerate() {
         for c in &f.chunks {
-          writeln!(writer, "{}\t{:?}\t{}", c.content, c.embedding, i+1)?;
+            writeln!(writer, "{}\t{:?}\t{}", c.content, c.embedding, i + 1)?;
         }
     }
     writer.finish()?;

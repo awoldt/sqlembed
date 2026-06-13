@@ -110,7 +110,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             // insert chunks into database
+            pb.set_message("inserting chunks into database");
             if cli_config.database_type == DatabaseType::Postgres {
+
                 let mut client = Client::connect(&database_url, NoTls)?;
                 copy_chunks(&mut client, &file_results, cli_config.model_to_use)?;
             } else if cli_config.database_type == DatabaseType::Mysql {
@@ -127,7 +129,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             };
 
             println!(
-                "=======================
+                "\n=======================
 Files Parsed : {}
 Chunks Created: {}
 Elapsed Time : {:.2?}
