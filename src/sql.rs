@@ -10,7 +10,21 @@
     embedding model used
 */
 
+use clap::{Parser, ValueEnum};
+use mysql::{Opts, Pool};
+use pgvector::Vector;
+use postgres::{
+    Client, NoTls,
+    binary_copy::BinaryCopyInWriter,
+    types::{Kind, Type},
+};
 use std::error::Error;
+
+#[derive(PartialEq)]
+pub enum DatabaseType {
+    Postgres,
+    Mysql,
+}
 
 pub struct FilesChunkResults {
     pub filename: String,
@@ -22,72 +36,72 @@ use fastembed::{EmbeddingModel, ModelInfo};
 
 use crate::utils::Chunk;
 
-pub fn generate_sql(
+pub fn copy_chunks(
+    client: &mut Client,
     chunks: &Vec<FilesChunkResults>,
     embedding_model: ModelInfo<EmbeddingModel>,
-) -> Result<String, Box<dyn Error>> {
-    // generate sql create tables query
-    let mut str: String = String::new();
-    str.push_str(
-        format!(
-            " -- text embedding model used: {} ({})
+) -> Result<(), Box<dyn Error>> {
+    // use a transaction!
+    let mut transaction = client.transaction()?;
 
-CREATE TABLE files(
-    file_id INT PRIMARY KEY,
-    file_name TEXT NOT NULL,
-    extension VARCHAR(250) NOT NULL
-);
+    // we need to add the vector extension so we can get oid of the "vector"
+    // column that will be used for embeddings
+    transaction.query("CREATE EXTENSION IF NOT EXISTS vector;", &[])?;
 
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE TABLE chunks(
-    chunk_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    content TEXT NOT NULL,
-    embeddings VECTOR({}) NOT NULL,
-    file_id INT NOT NULL,
-    FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
-);
+    let row = transaction.query_one("SELECT oid FROM pg_type WHERE typname = $1", &[&"vector"])?;
+    let oid: u32 = row.get(0);
+
+    // create the tables first
+    transaction.batch_execute(&format!(
+        "
+                            CREATE TABLE files(
+                            file_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                            file_name TEXT NOT NULL,
+                            extension VARCHAR(250) NOT NULL
+                        );
+
+                        CREATE EXTENSION IF NOT EXISTS vector;
+                        CREATE TABLE chunks(
+                            chunk_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                            content TEXT NOT NULL,
+                            embeddings VECTOR({}) NOT NULL,
+                            file_id INT NOT NULL,
+                            FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
+                        );
     ",
-            embedding_model.model, embedding_model.model_code, embedding_model.dim
-        )
-        .as_str(),
-    );
+        embedding_model.dim
+    ))?;
 
-    str.push_str("\n");
+    // insert files first
+    let w = transaction.copy_in("COPY files (file_name, extension) FROM STDIN (FORMAT binary)")?;
+    let mut writer = BinaryCopyInWriter::new(w, &[Type::TEXT, Type::VARCHAR]);
+    for c in chunks {
+        writer.write(&[&c.filename, &c.file_extention])?;
+    }
+    writer.finish()?;
 
-    // now add all the files
-    for (i, chunk) in chunks.iter().enumerate() {
-        let file_id = i + 1;
-
-        str.push_str(
-            format!(
-                "INSERT INTO files(file_id, file_name, extension) VALUES({},'{}','{}');\n",
-                file_id, chunk.filename, chunk.file_extention
-            )
-            .as_str(),
-        );
-
-        // now add all the chunks for each file
-        for c in &chunk.chunks {
-            str.push_str(
-                format!(
-                    "INSERT INTO chunks(content, embeddings, file_id) VALUES('{}','{:?}',{});\n",
-                    c.content.replace("'", "''"),
-                    c.embedding,
-                    file_id
-                )
-                .as_str(),
-            )
+    // insert chunks
+    let w = transaction
+        .copy_in("COPY chunks (content, embeddings, file_id) FROM STDIN (FORMAT binary)")?;
+    let mut writer = BinaryCopyInWriter::new(w, &[Type::TEXT, Type::TEXT, Type::INT4]);
+    for (i, f) in chunks.iter().enumerate() {
+        for c in &f.chunks {
+            writer.write(&[
+                &c.content,
+                &format!(
+                    "'[{}]'",
+                    &c.embedding
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                ),
+                &((i + 1) as i32),
+            ])?;
         }
     }
+    writer.finish()?;
 
-    return Ok(str.to_owned());
-}
-
-pub fn write_sql_to_filesystem(query: &str, filename: &str) -> Result<(), Box<dyn Error>> {
-    // this function will take the final sql queries generated above and
-    // write to a single ".sql" file in the cwd
-
-    std::fs::write(format!("{}.sql", filename), query)?;
-
+    transaction.commit()?;
     Ok(())
 }

@@ -6,14 +6,14 @@ use fastembed::{
     ModelInfo, TextEmbedding,
 };
 
-use crate::utils::VALID_FILE_EXTENSIONS;
+use crate::{sql::DatabaseType, utils::VALID_FILE_EXTENSIONS};
 
 pub struct CliChunkConfig {
     pub path_to_parse: PathBuf,
     pub exts_to_parse: Vec<String>,
     pub model_to_use: ModelInfo<EmbeddingModel>,
     pub chunk_size: i32,
-    pub output_filename: String,
+    pub database_type: DatabaseType,
 }
 
 #[derive(Parser, Debug)]
@@ -26,6 +26,9 @@ pub struct Args {
 pub enum Commands {
     Chunk {
         #[arg(long)]
+        database_url: String,
+
+        #[arg(long)]
         path: Option<String>,
 
         #[arg(long)]
@@ -36,9 +39,6 @@ pub enum Commands {
 
         #[arg(long)]
         size: Option<i32>,
-
-        #[arg(long)]
-        out: Option<String>,
     },
 
     List {},
@@ -50,7 +50,7 @@ impl Commands {
         exts: Option<String>,
         model: Option<String>,
         size: Option<i32>,
-        output: Option<String>,
+        database_url: &str,
     ) -> Result<CliChunkConfig, Box<dyn Error>> {
         let user_defined_path = path;
         let user_defined_exts = exts;
@@ -117,12 +117,16 @@ impl Commands {
             chunk_size = size.unwrap();
         }
 
-        // set the final sql file output filename
-        let mut output_filename = String::new();
-        if output.is_none() {
-            output_filename = "output".to_string();
+        // determine the database type
+        let database_type: DatabaseType;
+        if database_url.starts_with("postgres") {
+            database_type = DatabaseType::Postgres
+        } else if database_url.starts_with("mysql") {
+            database_type = DatabaseType::Mysql
         } else {
-            output_filename = output.unwrap()
+            return Err(
+                format!("invalid database connection string").into(),
+            );
         }
 
         Ok(CliChunkConfig {
@@ -130,7 +134,7 @@ impl Commands {
             exts_to_parse,
             model_to_use,
             chunk_size,
-            output_filename,
+            database_type,
         })
     }
 }

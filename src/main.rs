@@ -4,6 +4,7 @@ mod utils;
 
 use clap::Parser;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use mysql::prelude::Queryable;
 use std::{
     error::Error,
     time::{Duration, Instant},
@@ -14,9 +15,11 @@ use indicatif::{ProgressBar, ProgressStyle};
 use cli::Args;
 use utils::FileDetail;
 
+use postgres::{Client, NoTls, binary_copy::BinaryCopyInWriter, types::Type};
+
 use crate::{
     cli::Commands,
-    sql::{FilesChunkResults, generate_sql, write_sql_to_filesystem},
+    sql::{DatabaseType, FilesChunkResults, copy_chunks},
     utils::{VALID_FILE_EXTENSIONS, chunk_text, embed_chunks, extract_text_from_file, get_files},
 };
 
@@ -51,10 +54,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             exts,
             model,
             size,
-            out,
+            database_url,
         } => {
             let cli_config: cli::CliChunkConfig =
-                Commands::get_cli_chunk_config(path, exts, model, size, out)?;
+                Commands::get_cli_chunk_config(path, exts, model, size, &database_url)?;
 
             let files: Vec<FileDetail> = get_files(
                 &cli_config.path_to_parse.as_path(),
@@ -106,10 +109,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 });
             }
 
-            pb.finish_and_clear();
+            // insert chunks into database
+            if cli_config.database_type == DatabaseType::Postgres {
+                let mut client = Client::connect(&database_url, NoTls)?;
+                copy_chunks(&mut client, &file_results, cli_config.model_to_use)?;
+            } else if cli_config.database_type == DatabaseType::Mysql {
+            }
 
-            let sql_string = generate_sql(&file_results, cli_config.model_to_use)?;
-            write_sql_to_filesystem(&sql_string, &cli_config.output_filename)?;
+            pb.finish_and_clear();
 
             let num_of_chunks = {
                 let mut i = 0;
@@ -124,12 +131,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 Files Parsed : {}
 Chunks Created: {}
 Elapsed Time : {:.2?}
-Output SQL   : {}.sql
 =======================",
                 files.len(),
                 num_of_chunks,
                 start.elapsed(),
-                &cli_config.output_filename
             );
 
             return Ok(());
