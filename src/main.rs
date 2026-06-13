@@ -94,10 +94,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 ));
 
                 // 1. extract text from files
-                let file_text = extract_text_from_file(&f)?;
+                let file_text: String = extract_text_from_file(&f)?;
 
                 // 2. extract chunks from text
-                let mut chunks = chunk_text(&file_text, &cli_config.chunk_size);
+                let mut chunks: Vec<utils::Chunk> = chunk_text(&file_text, &cli_config.chunk_size);
 
                 // 3. embed each chunk and set the embedding field on the struct
                 embed_chunks(&mut chunks, &mut embedding_model)?;

@@ -18,7 +18,7 @@ use postgres::{
     binary_copy::BinaryCopyInWriter,
     types::{Kind, Type},
 };
-use std::error::Error;
+use std::{error::Error, io::Write};
 
 #[derive(PartialEq)]
 pub enum DatabaseType {
@@ -48,9 +48,6 @@ pub fn copy_chunks(
     // column that will be used for embeddings
     transaction.query("CREATE EXTENSION IF NOT EXISTS vector;", &[])?;
 
-    let row = transaction.query_one("SELECT oid FROM pg_type WHERE typname = $1", &[&"vector"])?;
-    let oid: u32 = row.get(0);
-
     // create the tables first
     transaction.batch_execute(&format!(
         "
@@ -73,31 +70,17 @@ pub fn copy_chunks(
     ))?;
 
     // insert files first
-    let w = transaction.copy_in("COPY files (file_name, extension) FROM STDIN (FORMAT binary)")?;
-    let mut writer = BinaryCopyInWriter::new(w, &[Type::TEXT, Type::VARCHAR]);
-    for c in chunks {
-        writer.write(&[&c.filename, &c.file_extention])?;
+    let mut writer = transaction.copy_in("COPY files (file_name, extension) FROM STDIN")?;
+    for f in chunks {
+        writeln!(writer, "{}\t{}", f.filename, f.file_extention)?;
     }
     writer.finish()?;
 
     // insert chunks
-    let w = transaction
-        .copy_in("COPY chunks (content, embeddings, file_id) FROM STDIN (FORMAT binary)")?;
-    let mut writer = BinaryCopyInWriter::new(w, &[Type::TEXT, Type::TEXT, Type::INT4]);
+    let mut writer = transaction.copy_in("COPY chunks (content, embeddings, file_id) FROM STDIN")?;
     for (i, f) in chunks.iter().enumerate() {
         for c in &f.chunks {
-            writer.write(&[
-                &c.content,
-                &format!(
-                    "'[{}]'",
-                    &c.embedding
-                        .iter()
-                        .map(|x| x.to_string())
-                        .collect::<Vec<_>>()
-                        .join(",")
-                ),
-                &((i + 1) as i32),
-            ])?;
+          writeln!(writer, "{}\t{:?}\t{}", c.content, c.embedding, i+1)?;
         }
     }
     writer.finish()?;
