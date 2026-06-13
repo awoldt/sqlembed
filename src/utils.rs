@@ -23,6 +23,19 @@ pub struct Chunk {
     pub embedding: Vec<f32>, // the vectors that represents this chunk of text
 }
 
+pub struct FilesChunkResults {
+    pub filename: String,
+    pub file_extention: String,
+    pub chunks: Vec<Chunk>,
+}
+
+#[derive(PartialEq)]
+pub enum DatabaseType {
+    Postgres,
+    Mysql,
+}
+
+
 pub fn get_files(
     dir: &Path,
     exts_to_parse: &Vec<String>,

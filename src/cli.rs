@@ -6,7 +6,7 @@ use fastembed::{
     ModelInfo, TextEmbedding,
 };
 
-use crate::{sql::DatabaseType, utils::VALID_FILE_EXTENSIONS};
+use crate::utils::{DatabaseType, VALID_FILE_EXTENSIONS};
 
 pub struct CliChunkConfig {
     pub path_to_parse: PathBuf,
@@ -124,9 +124,7 @@ impl Commands {
         } else if database_url.starts_with("mysql") {
             database_type = DatabaseType::Mysql
         } else {
-            return Err(
-                format!("invalid database connection string").into(),
-            );
+            return Err(format!("invalid database connection string").into());
         }
 
         Ok(CliChunkConfig {

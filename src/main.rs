@@ -1,10 +1,9 @@
 mod cli;
-mod sql;
+mod db;
 mod utils;
 
 use clap::Parser;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use mysql::prelude::Queryable;
 use std::{
     error::Error,
     time::{Duration, Instant},
@@ -15,12 +14,15 @@ use indicatif::{ProgressBar, ProgressStyle};
 use cli::Args;
 use utils::FileDetail;
 
-use postgres::{Client, NoTls, binary_copy::BinaryCopyInWriter, types::Type};
+use postgres::{Client, NoTls};
 
 use crate::{
     cli::Commands,
-    sql::{DatabaseType, FilesChunkResults, copy_chunks},
-    utils::{VALID_FILE_EXTENSIONS, chunk_text, embed_chunks, extract_text_from_file, get_files},
+    db::postgres::copy_chunks,
+    utils::{
+        DatabaseType, FilesChunkResults, VALID_FILE_EXTENSIONS, chunk_text, embed_chunks,
+        extract_text_from_file, get_files,
+    },
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -112,7 +114,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             // insert chunks into database
             pb.set_message("inserting chunks into database");
             if cli_config.database_type == DatabaseType::Postgres {
-
                 let mut client = Client::connect(&database_url, NoTls)?;
                 copy_chunks(&mut client, &file_results, cli_config.model_to_use)?;
             } else if cli_config.database_type == DatabaseType::Mysql {

@@ -1,40 +1,9 @@
-/*
-    the whole point of this cli tool is to generate sql that you can
-    quickly run against ur local postgres database
-
-    will include 2 main tables
-    - chunks
-    - files
-
-    each chunk inserted will include the appropriate dimensions based on the
-    embedding model used
-*/
-
-use clap::{Parser, ValueEnum};
-use mysql::{Opts, Pool};
-use pgvector::Vector;
-use postgres::{
-    Client, NoTls,
-    binary_copy::BinaryCopyInWriter,
-    types::{Kind, Type},
-};
-use std::{error::Error, io::Write};
-
-#[derive(PartialEq)]
-pub enum DatabaseType {
-    Postgres,
-    Mysql,
-}
-
-pub struct FilesChunkResults {
-    pub filename: String,
-    pub file_extention: String,
-    pub chunks: Vec<Chunk>,
-}
-
 use fastembed::{EmbeddingModel, ModelInfo};
+use postgres::Client;
+use std::error::Error;
+use std::io::Write;
 
-use crate::utils::Chunk;
+use crate::utils::FilesChunkResults;
 
 pub fn copy_chunks(
     client: &mut Client,
