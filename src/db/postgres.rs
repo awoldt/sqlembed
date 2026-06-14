@@ -5,7 +5,7 @@ use std::io::Write;
 
 use crate::utils::FilesChunkResults;
 
-pub fn copy_chunks(
+pub fn copy_chunks_postgres(
     client: &mut Client,
     chunks: &Vec<FilesChunkResults>,
     embedding_model: ModelInfo<EmbeddingModel>,
@@ -33,6 +33,11 @@ pub fn copy_chunks(
     ",
         embedding_model.dim
     ))?;
+
+    /* 
+        posgres has a major advantage over mysql with its "COPY" logic as we can
+        insert massive amounts of data with this very quickly
+     */
 
     // insert files first
     let mut writer = transaction.copy_in("COPY files (file_name, extension) FROM STDIN")?;

@@ -4,6 +4,7 @@ mod utils;
 
 use clap::Parser;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use mysql::{Opts, Pool};
 use std::{
     error::Error,
     time::{Duration, Instant},
@@ -18,7 +19,7 @@ use postgres::{Client, NoTls};
 
 use crate::{
     cli::Commands,
-    db::postgres::copy_chunks,
+    db::{mysql::copy_chunks_mysql, postgres::copy_chunks_postgres},
     utils::{
         DatabaseType, FilesChunkResults, VALID_FILE_EXTENSIONS, chunk_text, embed_chunks,
         extract_text_from_file, get_files,
@@ -85,7 +86,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
             pb.enable_steady_tick(Duration::from_millis(100));
 
-            let start = Instant::now();
+            let start: Instant = Instant::now();
 
             for (i, f) in files.iter().enumerate() {
                 pb.set_message(format!(
@@ -115,19 +116,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             pb.set_message("inserting chunks into database");
             if cli_config.database_type == DatabaseType::Postgres {
                 let mut client = Client::connect(&database_url, NoTls)?;
-                copy_chunks(&mut client, &file_results, cli_config.model_to_use)?;
+                copy_chunks_postgres(&mut client, &file_results, cli_config.model_to_use)?;
             } else if cli_config.database_type == DatabaseType::Mysql {
+                let opts = Opts::from_url(&database_url)?;
+                let pool = Pool::new(opts)?;
+                let mut conn = pool.get_conn()?;
+                copy_chunks_mysql(&mut conn, &file_results, cli_config.model_to_use)?;
             }
 
             pb.finish_and_clear();
-
-            let num_of_chunks = {
-                let mut i = 0;
-                for f in file_results {
-                    i += f.chunks.len()
-                }
-                i
-            };
 
             println!(
                 "\n=======================
@@ -136,7 +133,13 @@ Chunks Created: {}
 Elapsed Time : {:.2?}
 =======================",
                 files.len(),
-                num_of_chunks,
+                {
+                    let mut i = 0;
+                    for f in file_results {
+                        i += f.chunks.len()
+                    }
+                    i
+                },
                 start.elapsed(),
             );
 
