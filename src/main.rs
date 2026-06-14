@@ -4,7 +4,7 @@ mod utils;
 
 use clap::Parser;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use mysql::{Opts, Pool};
+use mysql::{Opts, Pool, prelude::Queryable};
 use std::{
     error::Error,
     time::{Duration, Instant},
@@ -121,7 +121,18 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let opts = Opts::from_url(&database_url)?;
                 let pool = Pool::new(opts)?;
                 let mut conn = pool.get_conn()?;
-                copy_chunks_mysql(&mut conn, &file_results, cli_config.model_to_use)?;
+                match copy_chunks_mysql(&mut conn, &file_results, cli_config.model_to_use) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        // if an error happens with mysql, need to manually delete the tables
+                        // created bc in mysql the CREATE TABLE statements are implcit commits,
+                        // transaction rollback will not remove the tables
+
+                        conn.query_drop("DROP TABLE IF EXISTS chunks;").ok();
+                        conn.query_drop("DROP TABLE IF EXISTS files;").ok();
+                        return Err(e);
+                    }
+                }
             }
 
             pb.finish_and_clear();

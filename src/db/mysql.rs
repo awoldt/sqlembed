@@ -1,6 +1,7 @@
 use crate::utils::FilesChunkResults;
 use fastembed::{EmbeddingModel, ModelInfo};
-use mysql::TxOpts;
+use mysql::Value::Float;
+use mysql::{Params, TxOpts};
 use mysql::{PooledConn, prelude::Queryable};
 use std::error::Error;
 
@@ -11,25 +12,25 @@ pub fn copy_chunks_mysql(
 ) -> Result<(), Box<dyn Error>> {
     // use a transaction!
     let mut transaction = conn.start_transaction(TxOpts::default())?;
+
     transaction.query_drop(
         "
         CREATE TABLE files (
-                    file_id INT AUTO_INCREMENT PRIMARY KEY,
-                    file_name TEXT NOT NULL,
-                    extension VARCHAR(250) NOT NULL
+            file_id INT AUTO_INCREMENT PRIMARY KEY,
+            file_name TEXT NOT NULL,
+            extension VARCHAR(250) NOT NULL
         );
     ",
     )?;
+    
     transaction.query_drop(format!(
-        "
-            CREATE TABLE chunks (
+        "CREATE TABLE chunks (
                 chunk_id INT AUTO_INCREMENT PRIMARY KEY,
                 content LONGTEXT NOT NULL,
                 embeddings VECTOR({}) NOT NULL,
                 file_id INT NOT NULL,
                 FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
-            );
-        ",
+            );",
         embedding_model.dim
     ))?;
 
