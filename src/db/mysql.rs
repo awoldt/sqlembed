@@ -24,7 +24,7 @@ pub fn copy_chunks_mysql(
         "
             CREATE TABLE chunks (
                 chunk_id INT AUTO_INCREMENT PRIMARY KEY,
-                content MEDIUMTEXT NOT NULL,
+                content LONGTEXT NOT NULL,
                 embeddings VECTOR({}) NOT NULL,
                 file_id INT NOT NULL,
                 FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
