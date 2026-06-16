@@ -19,10 +19,14 @@ use postgres::{Client, NoTls};
 
 use crate::{
     cli::Commands,
-    db::{mysql::copy_chunks_mysql, postgres::copy_chunks_postgres},
+    db::{
+        mysql::copy_chunks_mysql,
+        postgres::{copy_chunks_postgres, new_client},
+    },
     utils::{
-        DatabaseType, FilesChunkResults, VALID_FILE_EXTENSIONS, chunk_text, embed_chunks,
-        extract_text_from_file, get_files,
+        DatabaseType::{self, Mysql, Postgres},
+        FilesChunkResults, VALID_FILE_EXTENSIONS, chunk_text, embed_chunks, extract_text_from_file,
+        get_files,
     },
 };
 
@@ -58,6 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             model,
             size,
             database_url,
+            require_ssl,
         } => {
             let cli_config: cli::CliChunkConfig =
                 Commands::get_cli_chunk_config(path, exts, model, size, &database_url)?;
@@ -114,23 +119,26 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // insert chunks into database
             pb.set_message("inserting chunks into database");
-            if cli_config.database_type == DatabaseType::Postgres {
-                let mut client = Client::connect(&database_url, NoTls)?;
-                copy_chunks_postgres(&mut client, &file_results, cli_config.model_to_use)?;
-            } else if cli_config.database_type == DatabaseType::Mysql {
-                let opts = Opts::from_url(&database_url)?;
-                let pool = Pool::new(opts)?;
-                let mut conn = pool.get_conn()?;
-                match copy_chunks_mysql(&mut conn, &file_results, cli_config.model_to_use) {
-                    Ok(()) => (),
-                    Err(e) => {
-                        // if an error happens with mysql, need to manually delete the tables
-                        // created bc in mysql the CREATE TABLE statements are implcit commits,
-                        // transaction rollback will not remove the tables
+            match cli_config.database_type {
+                Postgres => {
+                    let mut client = new_client(require_ssl, &database_url)?;
+                    copy_chunks_postgres(&mut client, &file_results, cli_config.model_to_use)?;
+                }
+                Mysql => {
+                    let opts = Opts::from_url(&database_url)?;
+                    let pool = Pool::new(opts)?;
+                    let mut conn = pool.get_conn()?;
+                    match copy_chunks_mysql(&mut conn, &file_results, cli_config.model_to_use) {
+                        Ok(()) => (),
+                        Err(e) => {
+                            // if an error happens with mysql, need to manually delete the tables
+                            // created bc in mysql the CREATE TABLE statements are implcit commits,
+                            // transaction rollback will not remove the tables
 
-                        conn.query_drop("DROP TABLE IF EXISTS chunks;").ok();
-                        conn.query_drop("DROP TABLE IF EXISTS files;").ok();
-                        return Err(e);
+                            conn.query_drop("DROP TABLE IF EXISTS chunks;").ok();
+                            conn.query_drop("DROP TABLE IF EXISTS files;").ok();
+                            return Err(e);
+                        }
                     }
                 }
             }

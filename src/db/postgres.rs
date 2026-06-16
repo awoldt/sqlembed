@@ -1,9 +1,25 @@
 use fastembed::{EmbeddingModel, ModelInfo};
-use postgres::Client;
+use native_tls::TlsConnector;
+use postgres::{Client, NoTls};
+use postgres_native_tls::MakeTlsConnector;
 use std::error::Error;
 use std::io::Write;
 
 use crate::utils::FilesChunkResults;
+
+pub fn new_client(require_ssl: bool, database_url: &str) -> Result<Client, Box<dyn Error>> {
+    if !require_ssl {
+        let client: Client = Client::connect(&database_url, NoTls)?;
+        return Ok(client)
+    }
+
+    let connector: TlsConnector = TlsConnector::builder().build()?;
+    let connector: MakeTlsConnector = MakeTlsConnector::new(connector);
+
+    let client: Client = Client::connect(&database_url, connector)?;
+
+    Ok(client)
+}
 
 pub fn copy_chunks_postgres(
     client: &mut Client,
@@ -34,10 +50,10 @@ pub fn copy_chunks_postgres(
         embedding_model.dim
     ))?;
 
-    /* 
-        posgres has a major advantage over mysql with its "COPY" logic as we can
-        insert massive amounts of data with this very quickly
-     */
+    /*
+       posgres has a major advantage over mysql with its "COPY" logic as we can
+       insert massive amounts of data with this very quickly
+    */
 
     // insert files first
     let mut writer = transaction.copy_in("COPY files (file_name, extension) FROM STDIN")?;

@@ -39,6 +39,9 @@ pub enum Commands {
 
         #[arg(long)]
         size: Option<i32>,
+
+        #[arg(long)]
+        require_ssl: bool
     },
 
     List {},
