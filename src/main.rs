@@ -20,8 +20,8 @@ use postgres::{Client, NoTls};
 use crate::{
     cli::Commands,
     db::{
-        mysql::copy_chunks_mysql,
-        postgres::{copy_chunks_postgres, new_client},
+        mysql::{copy_chunks_mysql, new_mysql_client},
+        postgres::{copy_chunks_postgres, new_postgres_client},
     },
     utils::{
         DatabaseType::{self, Mysql, Postgres},
@@ -121,13 +121,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             pb.set_message("inserting chunks into database");
             match cli_config.database_type {
                 Postgres => {
-                    let mut client = new_client(require_ssl, &database_url)?;
+                    let mut client = new_postgres_client(require_ssl, &database_url)?;
                     copy_chunks_postgres(&mut client, &file_results, cli_config.model_to_use)?;
                 }
                 Mysql => {
-                    let opts = Opts::from_url(&database_url)?;
-                    let pool = Pool::new(opts)?;
-                    let mut conn = pool.get_conn()?;
+                    let mut conn = new_mysql_client(require_ssl, &database_url)?;
                     match copy_chunks_mysql(&mut conn, &file_results, cli_config.model_to_use) {
                         Ok(()) => (),
                         Err(e) => {

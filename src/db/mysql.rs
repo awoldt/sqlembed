@@ -1,9 +1,25 @@
 use crate::utils::FilesChunkResults;
 use fastembed::{EmbeddingModel, ModelInfo};
 use mysql::Value::Float;
-use mysql::{Params, TxOpts};
+use mysql::{Opts, OptsBuilder, Pool, SslOpts, TxOpts};
 use mysql::{PooledConn, prelude::Queryable};
 use std::error::Error;
+
+pub fn new_mysql_client(require_ssl: bool, database_url: &str) -> Result<PooledConn, Box<dyn Error>> {
+    if require_ssl {
+        let opts = Opts::from_url(database_url)?;
+        let opts_buidler = OptsBuilder::from_opts(opts).ssl_opts(Some(SslOpts::default()));
+        let pool = Pool::new(opts_buidler)?;
+        let conn = pool.get_conn()?;
+
+        return Ok(conn);
+    }
+
+    let opts = Opts::from_url(&database_url)?;
+    let pool = Pool::new(opts)?;
+    let conn = pool.get_conn()?;
+    Ok(conn)
+}
 
 pub fn copy_chunks_mysql(
     conn: &mut PooledConn,
@@ -22,7 +38,7 @@ pub fn copy_chunks_mysql(
         );
     ",
     )?;
-    
+
     transaction.query_drop(format!(
         "CREATE TABLE chunks (
                 chunk_id INT AUTO_INCREMENT PRIMARY KEY,

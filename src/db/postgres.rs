@@ -7,7 +7,7 @@ use std::io::Write;
 
 use crate::utils::FilesChunkResults;
 
-pub fn new_client(require_ssl: bool, database_url: &str) -> Result<Client, Box<dyn Error>> {
+pub fn new_postgres_client(require_ssl: bool, database_url: &str) -> Result<Client, Box<dyn Error>> {
     if !require_ssl {
         let client: Client = Client::connect(&database_url, NoTls)?;
         return Ok(client)
