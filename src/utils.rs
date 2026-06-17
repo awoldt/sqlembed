@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const VALID_FILE_EXTENSIONS: [&str; 6] = ["txt", "pdf", "docx", "pptx", "md", "json"];
+use crate::constants::{DOCUMENT_EXTENSIONS, TEXT_EXTENSIONS};
 
 #[derive(Debug)]
 pub struct FileDetail {
@@ -34,7 +34,6 @@ pub enum DatabaseType {
     Postgres,
     Mysql,
 }
-
 
 pub fn get_files(
     dir: &Path,
@@ -75,11 +74,6 @@ pub fn get_files(
             let ext_str = ext.to_str().unwrap();
             let path_str = path.to_string_lossy().into_owned();
 
-            // make sure its a valid file extension
-            if !VALID_FILE_EXTENSIONS.contains(&ext_str) {
-                continue;
-            }
-
             // check to see if the user only wants certain file extensions parsed
             if exts_to_parse.len() > 0 {
                 if !exts_to_parse.contains(&ext_str.to_string()) {
@@ -110,11 +104,6 @@ pub fn get_files(
             return Ok(vec![]); // early return
         }
 
-        // make sure its a valid file extension
-        if !VALID_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
-            return Ok(vec![]); // early return
-        }
-
         // check to see if the user only wants certain file extensions parsed
         if exts_to_parse.len() > 0 {
             if !exts_to_parse.contains(&ext.to_str().unwrap().to_string()) {
@@ -142,41 +131,46 @@ pub fn get_files(
 }
 
 pub fn extract_text_from_file(file: &FileDetail) -> Result<String, Box<dyn Error>> {
-    match file.extension.as_str() {
-        "txt" | "json" | "md" => {
-            let f: File = File::open(&file.absolute_path)?;
-            let mut buf_reader: BufReader<File> = BufReader::new(f);
-            let mut str = String::new();
-            buf_reader.read_to_string(&mut str)?;
-            Ok(str)
-        }
+    if TEXT_EXTENSIONS.contains(&file.extension.as_str()) {
+        let f: File = File::open(&file.absolute_path)?;
+        let mut buf_reader: BufReader<File> = BufReader::new(f);
+        let mut str = String::new();
+        buf_reader.read_to_string(&mut str)?;
+        return Ok(str);
+    }
 
-        "pdf" => {
-            let pdf = PdfDocument::open(file.absolute_path.clone())?;
-            if pdf.is_empty() {
-                // no pages on pdf, just return success with no chunks
-                return Ok(String::new());
+    if DOCUMENT_EXTENSIONS.contains(&file.extension.as_str()) {
+        match file.extension.as_str() {
+            "pdf" => {
+                let pdf = PdfDocument::open(file.absolute_path.clone())?;
+                if pdf.is_empty() {
+                    // no pages on pdf, just return success with no chunks
+                    return Ok(String::new());
+                }
+                let str = pdf.extract_text();
+                return Ok(str);
             }
-            let str = pdf.extract_text();
-            Ok(str)
-        }
 
-        "docx" => {
-            let doc: docx_lite::Document = parse_document_from_path(file.absolute_path.clone())?;
-            let str: String = doc.extract_text();
-            Ok(str)
-        }
+            "docx" => {
+                let doc: docx_lite::Document =
+                    parse_document_from_path(file.absolute_path.clone())?;
+                let str: String = doc.extract_text();
+                return Ok(str);
+            }
 
-        "pptx" => {
-            let ppt = rustypptx::parse_pptx(Path::new(&file.absolute_path))?;
-            let str: String = ppt.to_markdown();
-            Ok(str)
-        }
+            "pptx" => {
+                let ppt = rustypptx::parse_pptx(Path::new(&file.absolute_path))?;
+                let str: String = ppt.to_markdown();
+                return Ok(str);
+            }
 
-        _ => {
-            return Err("not a valid file extension to chunk".into());
+            _ => {
+                return Err("not a valid file extension to chunk".into());
+            }
         }
     }
+
+    Err("not a valid file extension to chunk".into())
 }
 
 pub fn chunk_text(file_text: &str, chunk_size: &i32) -> Vec<Chunk> {

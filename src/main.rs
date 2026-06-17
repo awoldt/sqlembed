@@ -1,4 +1,5 @@
 mod cli;
+mod constants;
 mod db;
 mod utils;
 
@@ -25,8 +26,7 @@ use crate::{
     },
     utils::{
         DatabaseType::{self, Mysql, Postgres},
-        FilesChunkResults, VALID_FILE_EXTENSIONS, chunk_text, embed_chunks, extract_text_from_file,
-        get_files,
+        FilesChunkResults, chunk_text, embed_chunks, extract_text_from_file, get_files,
     },
 };
 
@@ -73,10 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             )?;
 
             if files.len() == 0 {
-                println!(
-                    "there are no files to embed. valid files extensions: {}",
-                    VALID_FILE_EXTENSIONS.join(", ")
-                );
+                println!("no files to embed");
                 return Ok(());
             }
 

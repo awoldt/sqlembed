@@ -6,7 +6,7 @@ use fastembed::{
     ModelInfo, TextEmbedding,
 };
 
-use crate::utils::{DatabaseType, VALID_FILE_EXTENSIONS};
+use crate::{constants::{DOCUMENT_EXTENSIONS, TEXT_EXTENSIONS}, utils::DatabaseType};
 
 pub struct CliChunkConfig {
     pub path_to_parse: PathBuf,
@@ -41,7 +41,7 @@ pub enum Commands {
         size: Option<i32>,
 
         #[arg(long)]
-        require_ssl: bool
+        require_ssl: bool,
     },
 
     List {},
@@ -72,10 +72,12 @@ impl Commands {
         // all exts passed here have to be "valid"
         let mut exts_to_parse: Vec<String> = vec![];
         if let Some(x) = user_defined_exts {
+            let all_valid_filetypes: Vec<&str> = [TEXT_EXTENSIONS, DOCUMENT_EXTENSIONS].concat();
+
             let exts: Vec<&str> = x.split(",").collect();
             // make sure each extension is valid
             for e in &exts {
-                if !VALID_FILE_EXTENSIONS.contains(e) {
+                if !all_valid_filetypes.contains(e) {
                     return Err(format!("{} is not a supported file extension", e).into());
                 }
                 exts_to_parse.push(e.to_string());
