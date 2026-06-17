@@ -143,6 +143,20 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
                 Mysql => {
                     let mut conn = new_mysql_client(require_ssl, &database_url)?;
+
+                    // mysql version must be at least v9 to support vector columns
+                    let mysql_version: Option<String> = conn.query_first("SELECT VERSION();")?;
+                    if let Some(x) = mysql_version {
+                        if !x.starts_with("9") {
+                            return Err(format!(
+                                "vector embeddings support requires MySQL version 9.0+"
+                            )
+                            .into());
+                        }
+                    } else {
+                        return Err(format!("could not determine MySQL version").into());
+                    }
+
                     match copy_chunks_mysql(&mut conn, &file_results, cli_config.model_to_use) {
                         Ok(()) => (),
                         Err(e) => {
