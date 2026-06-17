@@ -20,6 +20,7 @@ use postgres::{Client, NoTls};
 
 use crate::{
     cli::Commands,
+    constants::{DOCUMENT_EXTENSIONS, TEXT_EXTENSIONS},
     db::{
         mysql::{copy_chunks_mysql, new_mysql_client},
         postgres::{copy_chunks_postgres, new_postgres_client},
@@ -64,13 +65,19 @@ fn main() -> Result<(), Box<dyn Error>> {
             database_url,
             require_ssl,
         } => {
-            let cli_config: cli::CliChunkConfig =
-                Commands::get_cli_chunk_config(path, exts, model, size, &database_url)?;
+            let valid_file_extensions: Vec<&str> = [TEXT_EXTENSIONS, DOCUMENT_EXTENSIONS].concat();
 
-            let files: Vec<FileDetail> = get_files(
+            let cli_config: cli::CliChunkConfig =
+                Commands::get_cli_chunk_config(path, exts, model, size, &database_url, &valid_file_extensions)?;
+
+            let mut files: Vec<FileDetail> = get_files(
                 &cli_config.path_to_parse.as_path(),
                 &cli_config.exts_to_parse,
             )?;
+
+            // filter out any files that dont belong to a supported file extension
+            // modifies existing files vector in place
+            files.retain(|x| valid_file_extensions.contains(&x.extension.as_str()));
 
             if files.len() == 0 {
                 println!("no files to embed");
