@@ -26,6 +26,12 @@ pub struct Args {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum ListCommands {
+    Models,
+    Files,
+}
+
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     Chunk {
         #[arg(long)]
@@ -47,7 +53,10 @@ pub enum Commands {
         require_ssl: bool,
     },
 
-    List {},
+    List {
+        #[command(subcommand)]
+        command: ListCommands,
+    },
 }
 
 impl Commands {
@@ -57,7 +66,7 @@ impl Commands {
         model: Option<String>,
         size: Option<i32>,
         database_url: &str,
-        valid_file_extensions: &Vec<&str>
+        valid_file_extensions: &Vec<&str>,
     ) -> Result<CliChunkConfig, Box<dyn Error>> {
         let user_defined_path = path;
         let user_defined_exts = exts;

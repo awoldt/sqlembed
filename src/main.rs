@@ -19,7 +19,7 @@ use utils::FileDetail;
 use postgres::{Client, NoTls};
 
 use crate::{
-    cli::Commands,
+    cli::{Commands, ListCommands},
     constants::{DOCUMENT_EXTENSIONS, TEXT_EXTENSIONS},
     db::{
         mysql::{copy_chunks_mysql, new_mysql_client},
@@ -33,29 +33,38 @@ use crate::{
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Args = Args::parse();
+    let mut valid_file_extensions: Vec<&str> = [TEXT_EXTENSIONS, DOCUMENT_EXTENSIONS].concat();
 
     match args.command {
-        Commands::List {} => {
-            struct ModelList {
-                str_name: String,
-                model: EmbeddingModel,
+        Commands::List { command } => match command {
+            ListCommands::Models => {
+                struct ModelList {
+                    str_name: String,
+                    model: EmbeddingModel,
+                }
+
+                let mut models: Vec<ModelList> = TextEmbedding::list_supported_models()
+                    .iter()
+                    .map(|x| ModelList {
+                        str_name: x.model_code.clone(),
+                        model: x.model.clone(),
+                    })
+                    .collect();
+                models.sort_by_key(|x| x.str_name.clone());
+
+                println!("Supported models:");
+                for m in models {
+                    println!("{:?} | ({:?})", m.model, m.str_name)
+                }
+                return Ok(());
             }
 
-            let mut models: Vec<ModelList> = TextEmbedding::list_supported_models()
-                .iter()
-                .map(|x| ModelList {
-                    str_name: x.model_code.clone(),
-                    model: x.model.clone(),
-                })
-                .collect();
-            models.sort_by_key(|x| x.str_name.clone());
-
-            println!("Supported models:");
-            for m in models {
-                println!("{:?} | ({:?})", m.model, m.str_name)
+            ListCommands::Files => {
+                valid_file_extensions.sort();
+                println!("Supported file extensions:\n{:#?}", valid_file_extensions);
+                Ok(())
             }
-            return Ok(());
-        }
+        },
 
         Commands::Chunk {
             path,
@@ -65,10 +74,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             database_url,
             require_ssl,
         } => {
-            let valid_file_extensions: Vec<&str> = [TEXT_EXTENSIONS, DOCUMENT_EXTENSIONS].concat();
-
-            let cli_config: cli::CliChunkConfig =
-                Commands::get_cli_chunk_config(path, exts, model, size, &database_url, &valid_file_extensions)?;
+            let cli_config: cli::CliChunkConfig = Commands::get_cli_chunk_config(
+                path,
+                exts,
+                model,
+                size,
+                &database_url,
+                &valid_file_extensions,
+            )?;
 
             let mut files: Vec<FileDetail> = get_files(
                 &cli_config.path_to_parse.as_path(),
@@ -76,7 +89,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             )?;
 
             // filter out any files that dont belong to a supported file extension
-            // modifies existing files vector in place
+            // modifies existing files vector in-place
             files.retain(|x| valid_file_extensions.contains(&x.extension.as_str()));
 
             if files.len() == 0 {
