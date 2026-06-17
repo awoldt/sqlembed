@@ -51,8 +51,7 @@ pub fn copy_chunks_postgres(
     ))?;
 
     /*
-       posgres has a major advantage over mysql with its "COPY" logic as we can
-       insert massive amounts of data with this very quickly
+       use "COPY FROM" as we can insert massive amounts of data with this very quickly
     */
 
     // insert files first

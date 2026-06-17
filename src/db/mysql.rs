@@ -50,10 +50,6 @@ pub fn copy_chunks_mysql(
         embedding_model.dim
     ))?;
 
-    /*
-        unlike postgres, mysql doesnt really have a "COPY" statement so the next best thing we can use
-        is the exec_batch method
-    */
 
     // insert files first
     transaction.exec_batch(
