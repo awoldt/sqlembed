@@ -1,7 +1,7 @@
 Parse files, embed text, and store vector records in your sql databases all with a single command. All embeddings are done on local machine, no need for third party API calls. 
 
 Supports:
-- 🐘 Postgres (requires pgvector extention installed)
+- 🐘 Postgres (requires pgvector extension installed)
 - 🐬 MySQL v9.0+
 
 ## Commands
