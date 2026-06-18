@@ -1,43 +1,36 @@
-Parse file text and embed into chunks that can be inserted into a postgresql database all with a single command. It can scan an entire directory or just a single file. All text embedding is run on your machine and does not require any third party api key.
+Parse files, embed text, and store vector records in your sql databases all with a single command. All embeddings are done on local machine, no need for third party API calls. 
 
-You must have the pgvector extension installed on the target database for insert queries to work.
+Supports:
+- 🐘 Postgres (requires pgvector extention installed)
+- 🐬 MySQL v9.0+
 
 ## Commands
-
 ### `chunk`
 
-The final sql query generated will include two tables creations and inserts for each: 
-- files 
-- chunks
-
 ```bash
-ezvector chunk [--path <path>] [--exts <exts>] [--model <model>] [--size <size>] [--out <output>]
+sqlembed chunk --database-url <url> [--path <path>] [--exts <exts>] [--model <model>] [--size <size>] [--require-ssl]
 ```
 
 | Flag | Required | Description |
 |---|---|---|
-| `--path` | no | Directory or file to parse. Relative to cwd. Defaults to cwd. |
-| `--exts` | no | Comma-separated file extensions to include (e.g. `pdf,txt`). Defaults to all supported extensions. |
-| `--model` | no | Embedding model to use. Defaults to `BGESmallENV15`. Run `ezvector list` to see options. |
-| `--size` | no | Number of words per chunk. Defaults to `250`. |
-| `--out` | no | Output SQL filename without extension. Defaults to `output` (writes `output.sql`). |
-
-Supported file extensions: `txt`, `pdf`, `docx`, `pptx`, `md`, `json`
+| `--database-url` | yes | Database connection string. Must start with `postgres` or `mysql` |
+| `--path` | no | Directory or file to parse. Relative to cwd. Defaults to cwd |
+| `--exts` | no | Comma-separated file extensions to include (e.g. `pdf,txt`). Defaults to all supported extensions |
+| `--model` | no | Embedding model to use. Defaults to `BGESmallENV15`. Run `sqlembed list models` to see options |
+| `--size` | no | Number of words per chunk. Defaults to `250` |
+| `--require-ssl` | no | Enable SSL/TLS when connecting to the database |
 
 **Examples:**
 
 ```bash
-ezvector chunk
-ezvector chunk --path ./docs
-ezvector chunk --path ./docs --exts pdf,md
-ezvector chunk --path ./docs --exts pdf --model BGESmallENV15
-ezvector chunk --path ./docs --size 500 --out my-data
+sqlembed chunk --database-url postgres://user:pass@localhost/mydb
+sqlembed chunk --database-url mysql://user:pass@localhost/mydb --path ./docs
+sqlembed chunk --database-url postgres://user:pass@localhost/mydb --path ./docs --exts pdf,md
+sqlembed chunk --database-url postgres://user:pass@localhost/mydb --path ./docs --exts pdf --model BGESmallENV15
+sqlembed chunk --database-url postgres://user:pass@localhost/mydb --path ./docs --size 500 --require-ssl
 ```
 
 ### `list`
+```sqlembed list files``` - List all supported files that can be embedded
 
-List supported embedding models.
-
-```bash
-ezvector list
-```
+```sqlembed list models``` - List all text embedding models available
