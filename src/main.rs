@@ -139,7 +139,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             match cli_config.database_type {
                 Postgres => {
                     let mut client = new_postgres_client(require_ssl, &database_url)?;
-                    copy_chunks_postgres(&mut client, &file_results, cli_config.model_to_use)?;
+                    copy_chunks_postgres(&mut client, &file_results, &cli_config.model_to_use)?;
                 }
                 Mysql => {
                     let mut conn = new_mysql_client(require_ssl, &database_url)?;
@@ -157,7 +157,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         return Err(format!("could not determine MySQL version").into());
                     }
 
-                    match copy_chunks_mysql(&mut conn, &file_results, cli_config.model_to_use) {
+                    match copy_chunks_mysql(&mut conn, &file_results, &cli_config.model_to_use) {
                         Ok(()) => (),
                         Err(e) => {
                             // if an error happens with mysql, need to manually delete the tables
@@ -179,6 +179,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 Files Parsed : {}
 Chunks Created: {}
 Elapsed Time : {:.2?}
+
+Embedding model used: {}
 =======================",
                 files.len(),
                 {
@@ -189,6 +191,7 @@ Elapsed Time : {:.2?}
                     i
                 },
                 start.elapsed(),
+                cli_config.model_to_use.model
             );
 
             return Ok(());

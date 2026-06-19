@@ -24,7 +24,7 @@ pub fn new_mysql_client(require_ssl: bool, database_url: &str) -> Result<PooledC
 pub fn copy_chunks_mysql(
     conn: &mut PooledConn,
     chunks: &Vec<FilesChunkResults>,
-    embedding_model: ModelInfo<EmbeddingModel>,
+    embedding_model: &ModelInfo<EmbeddingModel>,
 ) -> Result<(), Box<dyn Error>> {
     // use a transaction!
     let mut transaction = conn.start_transaction(TxOpts::default())?;

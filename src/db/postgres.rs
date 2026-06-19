@@ -24,7 +24,7 @@ pub fn new_postgres_client(require_ssl: bool, database_url: &str) -> Result<Clie
 pub fn copy_chunks_postgres(
     client: &mut Client,
     chunks: &Vec<FilesChunkResults>,
-    embedding_model: ModelInfo<EmbeddingModel>,
+    embedding_model: &ModelInfo<EmbeddingModel>,
 ) -> Result<(), Box<dyn Error>> {
     // use a transaction!
     let mut transaction = client.transaction()?;
