@@ -6,10 +6,7 @@ use fastembed::{
     ModelInfo, TextEmbedding,
 };
 
-use crate::{
-    constants::{DOCUMENT_EXTENSIONS, TEXT_EXTENSIONS},
-    utils::DatabaseType,
-};
+use crate::db::{DatabaseType};
 
 pub struct CliChunkConfig {
     pub path_to_parse: PathBuf,

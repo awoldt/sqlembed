@@ -11,6 +11,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+use db::{DatabaseType::{Mysql, Postgres}};
+
 use indicatif::{ProgressBar, ProgressStyle};
 
 use cli::Args;
@@ -26,7 +28,6 @@ use crate::{
         postgres::{copy_chunks_postgres, new_postgres_client},
     },
     utils::{
-        DatabaseType::{self, Mysql, Postgres},
         FilesChunkResults, chunk_text, embed_chunks, extract_text_from_file, get_files,
     },
 };

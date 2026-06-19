@@ -29,12 +29,6 @@ pub struct FilesChunkResults {
     pub chunks: Vec<Chunk>,
 }
 
-#[derive(PartialEq)]
-pub enum DatabaseType {
-    Postgres,
-    Mysql,
-}
-
 pub fn get_files(
     dir: &Path,
     exts_to_parse: &Vec<String>,
