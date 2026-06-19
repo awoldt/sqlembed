@@ -1,4 +1,4 @@
-use crate::utils::FilesChunkResults;
+use crate::parse::FilesChunkResults;
 use fastembed::{EmbeddingModel, ModelInfo};
 use mysql::Value::Float;
 use mysql::{Opts, OptsBuilder, Pool, SslOpts, TxOpts};

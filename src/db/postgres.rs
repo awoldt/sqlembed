@@ -5,7 +5,7 @@ use postgres_native_tls::MakeTlsConnector;
 use std::error::Error;
 use std::io::Write;
 
-use crate::utils::FilesChunkResults;
+use crate::parse::FilesChunkResults;
 
 pub fn new_postgres_client(require_ssl: bool, database_url: &str) -> Result<Client, Box<dyn Error>> {
     if !require_ssl {

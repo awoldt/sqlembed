@@ -1,7 +1,7 @@
 mod cli;
 mod constants;
 mod db;
-mod utils;
+mod parse;
 
 use clap::Parser;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
@@ -11,12 +11,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use db::{DatabaseType::{Mysql, Postgres}};
+use db::DatabaseType::{Mysql, Postgres};
 
 use indicatif::{ProgressBar, ProgressStyle};
 
 use cli::Args;
-use utils::FileDetail;
 
 use postgres::{Client, NoTls};
 
@@ -27,8 +26,8 @@ use crate::{
         mysql::{copy_chunks_mysql, new_mysql_client},
         postgres::{copy_chunks_postgres, new_postgres_client},
     },
-    utils::{
-        FilesChunkResults, chunk_text, embed_chunks, extract_text_from_file, get_files,
+    parse::{
+        FileDetail, FilesChunkResults, chunk_text, embed_chunks, extract_text_from_file, get_files,
     },
 };
 
@@ -123,7 +122,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let file_text: String = extract_text_from_file(&f)?;
 
                 // 2. extract chunks from text
-                let mut chunks: Vec<utils::Chunk> = chunk_text(&file_text, &cli_config.chunk_size);
+                let mut chunks: Vec<parse::Chunk> = chunk_text(&file_text, &cli_config.chunk_size);
 
                 // 3. embed each chunk and set the embedding field on the struct
                 embed_chunks(&mut chunks, &mut embedding_model)?;
