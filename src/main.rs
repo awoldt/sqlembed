@@ -5,7 +5,7 @@ mod parse;
 
 use clap::Parser;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use mysql::{Opts, Pool, prelude::Queryable};
+use mysql::{Opts, Pool, PooledConn, prelude::Queryable};
 use std::{
     error::Error,
     time::{Duration, Instant},
@@ -23,8 +23,8 @@ use crate::{
     cli::{Commands, ListCommands},
     constants::{DOCUMENT_EXTENSIONS, TEXT_EXTENSIONS},
     db::{
-        mysql::{copy_chunks_mysql, new_mysql_client},
-        postgres::{copy_chunks_postgres, new_postgres_client},
+        mysql::{insert_chunk_mysql, new_mysql_client},
+        postgres::{insert_chunk_postgres, new_postgres_client},
     },
     parse::{
         FileDetail, FilesChunkResults, chunk_text, embed_chunks, extract_text_from_file, get_files,
@@ -83,6 +83,22 @@ fn main() -> Result<(), Box<dyn Error>> {
                 &valid_file_extensions,
             )?;
 
+            // create a single database connection
+            let mut mysql_client: Option<PooledConn> = None;
+            let mut postgres_client: Option<Client> = None;
+
+            match cli_config.database_type {
+                Postgres => {
+                    let mut client = new_postgres_client(require_ssl, &database_url)?;
+                    postgres_client = Some(client);
+                }
+                Mysql => {
+                    let mut client = new_mysql_client(require_ssl, &database_url)?;
+                    mysql_client = Some(client);
+                }
+            }
+
+            // get all the files
             let mut files: Vec<FileDetail> = get_files(
                 &cli_config.path_to_parse.as_path(),
                 &cli_config.exts_to_parse,
@@ -98,18 +114,18 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             // create the embedding model once outside of all the chunking logic
-            // so doesnt have to be recreated constantly
             let mut embedding_model: TextEmbedding =
                 TextEmbedding::try_new(InitOptions::new(EmbeddingModel::BGESmallENV15))?;
-
-            let mut file_results: Vec<FilesChunkResults> = vec![];
 
             let pb: ProgressBar = ProgressBar::new_spinner();
             pb.set_style(ProgressStyle::with_template("{spinner} {msg}")?);
             pb.enable_steady_tick(Duration::from_millis(100));
 
+            // loop through all files
             let start: Instant = Instant::now();
-
+            let mut file_index: i32 = 1; // used for primary key inserts
+            let mut successes: i32 = 0;
+            let mut errors: i32 = 0;
             for (i, f) in files.iter().enumerate() {
                 pb.set_message(format!(
                     "File {:?}/{:?} | {:?}",
@@ -127,46 +143,55 @@ fn main() -> Result<(), Box<dyn Error>> {
                 // 3. embed each chunk and set the embedding field on the struct
                 embed_chunks(&mut chunks, &mut embedding_model)?;
 
-                file_results.push(FilesChunkResults {
+                // 4. insert file and chunks into database
+                let file_result: FilesChunkResults = FilesChunkResults {
                     filename: f.filename.clone(),
                     file_extention: f.extension.clone(),
                     chunks,
-                });
-            }
+                };
 
-            // insert chunks into database
-            pb.set_message("inserting chunks into database");
-            match cli_config.database_type {
-                Postgres => {
-                    let mut client = new_postgres_client(require_ssl, &database_url)?;
-                    copy_chunks_postgres(&mut client, &file_results, &cli_config.model_to_use)?;
-                }
-                Mysql => {
-                    let mut conn = new_mysql_client(require_ssl, &database_url)?;
-
-                    // mysql version must be at least v9 to support vector columns
-                    let mysql_version: Option<String> = conn.query_first("SELECT VERSION();")?;
-                    if let Some(x) = mysql_version {
-                        if !x.starts_with("9") {
-                            return Err(format!(
-                                "vector embeddings support requires MySQL version 9.0+"
-                            )
-                            .into());
+                match cli_config.database_type {
+                    Postgres => {
+                        if postgres_client.is_none() {
+                            return Err(format!("could not establish postgres client").into());
                         }
-                    } else {
-                        return Err(format!("could not determine MySQL version").into());
+
+                        match insert_chunk_postgres(
+                            &mut postgres_client.unwrap(),
+                            &file_result,
+                            &mut file_index,
+                        ) {
+                            Ok(()) => {
+                                successes += 1;
+                                continue;
+                            }
+                            Err((e)) => {
+                                errors += 1;
+
+                                continue;
+                            }
+                        }
                     }
 
-                    match copy_chunks_mysql(&mut conn, &file_results, &cli_config.model_to_use) {
-                        Ok(()) => (),
-                        Err(e) => {
-                            // if an error happens with mysql, need to manually delete the tables
-                            // created bc in mysql the CREATE TABLE statements are implcit commits,
-                            // transaction rollback will not remove the tables
+                    Mysql => {
+                        if mysql_client.is_none() {
+                            return Err(format!("could not establish mysql client").into());
+                        }
 
-                            conn.query_drop("DROP TABLE IF EXISTS chunks;").ok();
-                            conn.query_drop("DROP TABLE IF EXISTS files;").ok();
-                            return Err(e);
+                        match insert_chunk_mysql(
+                            &mut mysql_client.unwrap(),
+                            &file_result,
+                            &mut file_index,
+                        ) {
+                            Ok(()) => {
+                                successes += 1;
+                                continue;
+                            }
+                            Err((e)) => {
+                                errors += 1;
+
+                                continue;
+                            }
                         }
                     }
                 }
@@ -177,20 +202,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!(
                 "\n=======================
 Files Parsed : {}
-Chunks Created: {}
 Elapsed Time : {:.2?}
+
+Errors: {}
 
 Embedding model used: {}
 =======================",
-                files.len(),
-                {
-                    let mut i = 0;
-                    for f in file_results {
-                        i += f.chunks.len()
-                    }
-                    i
-                },
+                successes,
                 start.elapsed(),
+                format!("{} errors", errors),
                 cli_config.model_to_use.model
             );
 

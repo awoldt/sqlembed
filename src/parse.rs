@@ -1,3 +1,16 @@
+/*
+    steps:
+    1. read file into single string
+    2. process file text into chunks (250 default)
+    3. embed each chunk
+    4. insert into database
+
+*/
+
+
+
+
+
 use docx_lite::parse_document_from_path;
 use fastembed::TextEmbedding;
 use pdfsink_rs::PdfDocument;
