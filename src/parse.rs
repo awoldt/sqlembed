@@ -211,22 +211,20 @@ pub fn embed_chunks(
     chunks: &mut Vec<Chunk>,
     embedding_model: &mut TextEmbedding,
 ) -> Result<(), Box<dyn Error>> {
-    let mut words: Vec<String> = vec![];
-    for c in chunks.iter_mut() {
-        words.push(c.content.clone())
-    }
+    // split this embedding process into batches
+    // will be much faster and prevent massive memory usage
+    // some files could potentially have hundreds of thousands of chunks
+    // feeding all into the embed method all at once will expload memory usage
 
-    let embeddings: Vec<Vec<f32>> = embedding_model.embed(words, None)?;
-    let num_of_chunks: usize = chunks.len();
-    let num_of_embeddings: usize = embeddings.len();
+    for batch in chunks.chunks_mut(256) {
+        let words: Vec<String> = batch.iter().map(|x| x.content.clone()).collect();
 
-    if num_of_embeddings != num_of_chunks {
-        return Err("embedding count did not match chunk count".into());
-    }
+        let embeddings: Vec<Vec<f32>> = embedding_model.embed(words, None)?;
 
-    // set the embedding now for each chunk
-    for (i, c) in chunks.iter_mut().enumerate() {
-        c.embedding = embeddings[i].clone();
+        // set the embedding now for each chunk
+        for (i, b) in batch.iter_mut().enumerate() {
+            b.embedding = embeddings[i].clone();
+        }
     }
 
     Ok(())

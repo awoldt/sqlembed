@@ -160,7 +160,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // loop through all files
             let start: Instant = Instant::now();
-            let mut file_index: i32 = 1; // used for primary key inserts
             let mut successes: i32 = 0;
             let mut errors: i32 = 0;
             for (i, f) in files.iter().enumerate() {
@@ -172,13 +171,25 @@ fn main() -> Result<(), Box<dyn Error>> {
                 ));
 
                 // 1. extract text from files
-                let file_text: String = extract_text_from_file(&f)?;
+                let file_text: String = match extract_text_from_file(&f) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        println!("error while extracting text for {}\n{:?}", f.filename, e);
+                        continue;
+                    }
+                };
 
                 // 2. extract chunks from text
                 let mut chunks: Vec<parse::Chunk> = chunk_text(&file_text, &cli_config.chunk_size);
 
                 // 3. embed each chunk and set the embedding field on the struct
-                embed_chunks(&mut chunks, &mut embedding_model)?;
+                match embed_chunks(&mut chunks, &mut embedding_model) {
+                    Ok(()) => (),
+                    Err(e) => {
+                        println!("error while embedding text for {}\n{:?}", f.filename, e);
+                        continue;
+                    }
+                }
 
                 // 4. insert file and chunks into database
                 let file_result: FilesChunkResults = FilesChunkResults {
@@ -189,19 +200,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 match cli_config.database_type {
                     Postgres => match postgres_client.as_mut() {
-                        Some(client) => {
-                            match insert_chunk_postgres(client, &file_result, &mut file_index) {
-                                Ok(()) => {
-                                    successes += 1;
-                                    continue;
-                                }
-                                Err((e)) => {
-                                    errors += 1;
-
-                                    continue;
-                                }
+                        Some(client) => match insert_chunk_postgres(client, &file_result) {
+                            Ok(()) => {
+                                successes += 1;
+                                continue;
                             }
-                        }
+                            Err((e)) => {
+                                println!("{:?}", e);
+
+                                errors += 1;
+
+                                continue;
+                            }
+                        },
 
                         None => {
                             return Err(format!("could not establish postgres client").into());
@@ -209,18 +220,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                     },
 
                     Mysql => match mysql_client.as_mut() {
-                        Some(client) => {
-                            match insert_chunk_mysql(client, &file_result, &mut file_index) {
-                                Ok(()) => {
-                                    successes += 1;
-                                    continue;
-                                }
-                                Err((e)) => {
-                                    errors += 1;
-                                    continue;
-                                }
+                        Some(client) => match insert_chunk_mysql(client, &file_result) {
+                            Ok(()) => {
+                                successes += 1;
+                                continue;
                             }
-                        }
+                            Err((e)) => {
+                                errors += 1;
+                                continue;
+                            }
+                        },
                         None => {
                             return Err(format!("could not establish postgres client").into());
                         }

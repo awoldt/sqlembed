@@ -27,27 +27,26 @@ pub fn new_postgres_client(
 pub fn insert_chunk_postgres(
     client: &mut Client,
     file_result: &FilesChunkResults,
-    file_index: &mut i32,
 ) -> Result<(), Box<dyn Error>> {
     let mut transaction: postgres::Transaction<'_> = client.transaction()?;
 
     // insert file first
-    transaction.query(
-        "INSERT INTO files(file_name, extension) VALUES($1, $2);",
+    let row = transaction.query_one(
+        "INSERT INTO files(file_name, extension) VALUES($1, $2) RETURNING file_id;",
         &[&file_result.filename, &file_result.file_extention],
     )?;
+    let file_id: i32 = row.get(0);
 
     // insert all chunks for this file
-    for c in &file_result.chunks {
-        transaction.query(
-            "INSERT INTO chunks (content, embeddings, file_id) VALUES($1, $2, $3);",
-            &[&c.content, &c.embedding, file_index],
-        )?;
+    // use "COPY" as much faster
+    let mut writer =
+        transaction.copy_in("COPY chunks (content, embeddings, file_id) FROM STDIN")?;
+
+    for (i, f) in file_result.chunks.iter().enumerate() {
+        writeln!(writer, "{}\t{:?}\t{}", f.content, f.embedding, file_id)?;
     }
-
+    writer.finish()?;
     transaction.commit()?;
-
-    *file_index += 1;
 
     Ok(())
 }

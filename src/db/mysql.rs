@@ -27,7 +27,6 @@ pub fn new_mysql_client(
 pub fn insert_chunk_mysql(
     conn: &mut PooledConn,
     file_result: &FilesChunkResults,
-    file_index: &mut i32,
 ) -> Result<(), Box<dyn Error>> {
     let mut transaction = conn.start_transaction(TxOpts::default())?;
 
@@ -36,6 +35,10 @@ pub fn insert_chunk_mysql(
         "INSERT INTO files (file_name, extension) VALUES (?, ?)",
         (&file_result.filename, &file_result.file_extention),
     )?;
+    let file_id = transaction.last_insert_id();
+    if file_id.is_none() {
+        return Err(format!("error while getting last_insert_id").into());
+    }
 
     // insert all chunks for this file
     for c in &file_result.chunks {
@@ -51,13 +54,12 @@ pub fn insert_chunk_mysql(
                         .collect::<Vec<String>>()
                         .join(",")
                 ),
-                *file_index,
+                file_id.unwrap(),
             ),
         )?;
     }
 
     transaction.commit()?;
 
-    *file_index += 1;
     Ok(())
 }
