@@ -7,10 +7,6 @@
 
 */
 
-
-
-
-
 use docx_lite::parse_document_from_path;
 use fastembed::TextEmbedding;
 use pdfsink_rs::PdfDocument;

@@ -41,10 +41,23 @@ pub fn insert_chunk_mysql(
     for c in &file_result.chunks {
         transaction.exec_drop(
             "INSERT INTO chunks (content, embeddings, file_id) VALUES (?, ?, ?)",
-            (&c.content, &c.embedding, &file_index),
+            (
+                &c.content,
+                format!(
+                    "[{}]",
+                    c.embedding
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<String>>()
+                        .join(",")
+                ),
+                file_index.clone(),
+            ),
         )?;
     }
 
     transaction.commit()?;
+
+    *file_index += 1;
     Ok(())
 }

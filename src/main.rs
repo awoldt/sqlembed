@@ -17,12 +17,13 @@ use indicatif::{ProgressBar, ProgressStyle};
 
 use cli::Args;
 
-use postgres::{Client, NoTls};
+use postgres::{Client, NoTls, types::IsNull::No};
 
 use crate::{
     cli::{Commands, ListCommands},
     constants::{DOCUMENT_EXTENSIONS, TEXT_EXTENSIONS},
     db::{
+        create_tables,
         mysql::{insert_chunk_mysql, new_mysql_client},
         postgres::{insert_chunk_postgres, new_postgres_client},
     },
@@ -84,16 +85,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             )?;
 
             // create a single database connection
-            let mut mysql_client: Option<PooledConn> = None;
             let mut postgres_client: Option<Client> = None;
+            let mut mysql_client: Option<PooledConn> = None;
 
             match cli_config.database_type {
                 Postgres => {
-                    let mut client = new_postgres_client(require_ssl, &database_url)?;
+                    let client = new_postgres_client(require_ssl, &database_url)?;
                     postgres_client = Some(client);
                 }
                 Mysql => {
-                    let mut client = new_mysql_client(require_ssl, &database_url)?;
+                    let client = new_mysql_client(require_ssl, &database_url)?;
                     mysql_client = Some(client);
                 }
             }
@@ -151,49 +152,57 @@ fn main() -> Result<(), Box<dyn Error>> {
                 };
 
                 match cli_config.database_type {
-                    Postgres => {
-                        if postgres_client.is_none() {
+                    Postgres => match postgres_client.as_mut() {
+                        Some(client) => {
+                            create_tables(
+                                &cli_config.database_type,
+                                Some(&mut *client),
+                                None,
+                                &cli_config.model_to_use,
+                            )?;
+
+                            match insert_chunk_postgres(client, &file_result, &mut file_index) {
+                                Ok(()) => {
+                                    successes += 1;
+                                    continue;
+                                }
+                                Err((e)) => {
+                                    errors += 1;
+
+                                    continue;
+                                }
+                            }
+                        }
+
+                        None => {
                             return Err(format!("could not establish postgres client").into());
                         }
+                    },
 
-                        match insert_chunk_postgres(
-                            &mut postgres_client.unwrap(),
-                            &file_result,
-                            &mut file_index,
-                        ) {
-                            Ok(()) => {
-                                successes += 1;
-                                continue;
-                            }
-                            Err((e)) => {
-                                errors += 1;
+                    Mysql => match mysql_client.as_mut() {
+                        Some(client) => {
+                            create_tables(
+                                &cli_config.database_type,
+                                None,
+                                Some(&mut *client),
+                                &cli_config.model_to_use,
+                            )?;
 
-                                continue;
-                            }
-                        }
-                    }
-
-                    Mysql => {
-                        if mysql_client.is_none() {
-                            return Err(format!("could not establish mysql client").into());
-                        }
-
-                        match insert_chunk_mysql(
-                            &mut mysql_client.unwrap(),
-                            &file_result,
-                            &mut file_index,
-                        ) {
-                            Ok(()) => {
-                                successes += 1;
-                                continue;
-                            }
-                            Err((e)) => {
-                                errors += 1;
-
-                                continue;
+                            match insert_chunk_mysql(client, &file_result, &mut file_index) {
+                                Ok(()) => {
+                                    successes += 1;
+                                    continue;
+                                }
+                                Err((e)) => {
+                                    errors += 1;
+                                    continue;
+                                }
                             }
                         }
-                    }
+                        None => {
+                            return Err(format!("could not establish postgres client").into());
+                        }
+                    },
                 }
             }
 

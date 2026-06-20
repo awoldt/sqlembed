@@ -47,7 +47,7 @@ pub fn insert_chunk_postgres(
 
     transaction.commit()?;
 
+    *file_index += 1;
+
     Ok(())
 }
-
-
