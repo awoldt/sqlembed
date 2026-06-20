@@ -7,10 +7,13 @@ use std::io::Write;
 
 use crate::parse::FilesChunkResults;
 
-pub fn new_postgres_client(require_ssl: bool, database_url: &str) -> Result<Client, Box<dyn Error>> {
+pub fn new_postgres_client(
+    require_ssl: bool,
+    database_url: &str,
+) -> Result<Client, Box<dyn Error>> {
     if !require_ssl {
         let client: Client = Client::connect(&database_url, NoTls)?;
-        return Ok(client)
+        return Ok(client);
     }
 
     let connector: TlsConnector = TlsConnector::builder().build()?;
@@ -21,56 +24,30 @@ pub fn new_postgres_client(require_ssl: bool, database_url: &str) -> Result<Clie
     Ok(client)
 }
 
-pub fn copy_chunks_postgres(
+pub fn insert_chunk_postgres(
     client: &mut Client,
-    chunks: &Vec<FilesChunkResults>,
-    embedding_model: &ModelInfo<EmbeddingModel>,
+    file_result: &FilesChunkResults,
+    file_index: &mut i32,
 ) -> Result<(), Box<dyn Error>> {
-    // use a transaction!
-    let mut transaction = client.transaction()?;
+    let mut transaction: postgres::Transaction<'_> = client.transaction()?;
 
-    // create the tables first
-    transaction.batch_execute(&format!(
-        "
-                            CREATE TABLE files(
-                            file_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                            file_name TEXT NOT NULL,
-                            extension VARCHAR(250) NOT NULL
-                        );
+    // insert file first
+    transaction.query(
+        "INSERT INTO files(file_name, extension) VALUES($1, $2);",
+        &[&file_result.filename, &file_result.file_extention],
+    )?;
 
-                        CREATE EXTENSION IF NOT EXISTS vector;
-                        CREATE TABLE chunks(
-                            chunk_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-                            content TEXT NOT NULL,
-                            embeddings VECTOR({}) NOT NULL,
-                            file_id INT NOT NULL,
-                            FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
-                        );
-    ",
-        embedding_model.dim
-    ))?;
-
-    /*
-       use "COPY FROM" as we can insert massive amounts of data with this very quickly
-    */
-
-    // insert files first
-    let mut writer = transaction.copy_in("COPY files (file_name, extension) FROM STDIN")?;
-    for f in chunks {
-        writeln!(writer, "{}\t{}", f.filename, f.file_extention)?;
+    // insert all chunks for this file
+    for c in &file_result.chunks {
+        transaction.query(
+            "INSERT INTO chunks (content, embeddings, file_id) VALUES($1, $2, $3);",
+            &[&c.content, &c.embedding, file_index],
+        )?;
     }
-    writer.finish()?;
-
-    // insert chunks
-    let mut writer =
-        transaction.copy_in("COPY chunks (content, embeddings, file_id) FROM STDIN")?;
-    for (i, f) in chunks.iter().enumerate() {
-        for c in &f.chunks {
-            writeln!(writer, "{}\t{:?}\t{}", c.content, c.embedding, i + 1)?;
-        }
-    }
-    writer.finish()?;
 
     transaction.commit()?;
+
+    *file_index += 1;
+
     Ok(())
 }
