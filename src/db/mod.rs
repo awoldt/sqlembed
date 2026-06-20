@@ -28,9 +28,8 @@ pub fn create_tables(
     match database_type {
         Postgres => match postgres_client {
             Some(client) => {
-                client.query(
-                    &format!(
-                        "
+                client.batch_execute(&format!(
+                    "
                             CREATE TABLE files(
                             file_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                             file_name TEXT NOT NULL,
@@ -46,10 +45,8 @@ pub fn create_tables(
                             FOREIGN KEY (file_id) REFERENCES files(file_id) ON DELETE CASCADE
                         );
     ",
-                        embedding_model.dim
-                    ),
-                    &[],
-                )?;
+                    embedding_model.dim
+                ))?;
             }
 
             None => {

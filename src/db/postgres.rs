@@ -40,7 +40,7 @@ pub fn insert_chunk_postgres(
     // insert all chunks for this file
     for c in &file_result.chunks {
         transaction.query(
-            "INSERT INTO chunks (content, embeddings, file_id) VALUES($1, $2);",
+            "INSERT INTO chunks (content, embeddings, file_id) VALUES($1, $2, $3);",
             &[&c.content, &c.embedding, file_index],
         )?;
     }

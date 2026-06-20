@@ -88,14 +88,50 @@ fn main() -> Result<(), Box<dyn Error>> {
             let mut postgres_client: Option<Client> = None;
             let mut mysql_client: Option<PooledConn> = None;
 
+            // init the db clients
             match cli_config.database_type {
                 Postgres => {
                     let client = new_postgres_client(require_ssl, &database_url)?;
                     postgres_client = Some(client);
                 }
                 Mysql => {
-                    let client = new_mysql_client(require_ssl, &database_url)?;
+                    // specifically with mysql, make sure user has at least version 9 installed
+                    // anything below v9 wont support vector columns by default
+                    let mut client = new_mysql_client(require_ssl, &database_url)?;
+                    let mysql_version: Option<String> = client.query_first("SELECT VERSION();")?;
+                    if let Some(x) = mysql_version {
+                        if !x.starts_with("9") {
+                            return Err(format!(
+                                "vector embeddings support requires MySQL version 9.0+"
+                            )
+                            .into());
+                        }
+                    } else {
+                        return Err(format!("could not determine MySQL version").into());
+                    }
+
                     mysql_client = Some(client);
+                }
+            }
+
+            // create the tables needed
+            match cli_config.database_type {
+                Postgres => {
+                    create_tables(
+                        &cli_config.database_type,
+                        postgres_client.as_mut(),
+                        None,
+                        &cli_config.model_to_use,
+                    )?;
+                }
+
+                Mysql => {
+                    create_tables(
+                        &cli_config.database_type,
+                        None,
+                        mysql_client.as_mut(),
+                        &cli_config.model_to_use,
+                    )?;
                 }
             }
 
@@ -154,13 +190,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                 match cli_config.database_type {
                     Postgres => match postgres_client.as_mut() {
                         Some(client) => {
-                            create_tables(
-                                &cli_config.database_type,
-                                Some(&mut *client),
-                                None,
-                                &cli_config.model_to_use,
-                            )?;
-
                             match insert_chunk_postgres(client, &file_result, &mut file_index) {
                                 Ok(()) => {
                                     successes += 1;
@@ -181,13 +210,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                     Mysql => match mysql_client.as_mut() {
                         Some(client) => {
-                            create_tables(
-                                &cli_config.database_type,
-                                None,
-                                Some(&mut *client),
-                                &cli_config.model_to_use,
-                            )?;
-
                             match insert_chunk_mysql(client, &file_result, &mut file_index) {
                                 Ok(()) => {
                                     successes += 1;

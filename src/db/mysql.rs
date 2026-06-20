@@ -51,7 +51,7 @@ pub fn insert_chunk_mysql(
                         .collect::<Vec<String>>()
                         .join(",")
                 ),
-                file_index.clone(),
+                *file_index,
             ),
         )?;
     }
