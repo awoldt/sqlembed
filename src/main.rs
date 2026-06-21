@@ -174,7 +174,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let file_text: String = match extract_text_from_file(&f) {
                     Ok(x) => x,
                     Err(e) => {
-                        println!("error while extracting text for {}\n{:?}", f.filename, e);
                         continue;
                     }
                 };
@@ -186,7 +185,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                 match embed_chunks(&mut chunks, &mut embedding_model) {
                     Ok(()) => (),
                     Err(e) => {
-                        println!("error while embedding text for {}\n{:?}", f.filename, e);
                         continue;
                     }
                 }
