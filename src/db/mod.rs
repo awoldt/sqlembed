@@ -30,14 +30,14 @@ pub fn create_tables(
             Some(client) => {
                 client.batch_execute(&format!(
                     "
-                            CREATE TABLE files(
+                            CREATE TABLE IF NOT EXISTS files(
                             file_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                             file_name TEXT NOT NULL,
                             extension VARCHAR(250) NOT NULL
                         );
 
                         CREATE EXTENSION IF NOT EXISTS vector;
-                        CREATE TABLE chunks(
+                        CREATE TABLE IF NOT EXISTS chunks(
                             chunk_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
                             content TEXT NOT NULL,
                             embeddings VECTOR({}) NOT NULL,
@@ -57,7 +57,7 @@ pub fn create_tables(
             Some(client) => {
                 client.query_drop(
                     "
-                        CREATE TABLE files (
+                        CREATE TABLE IF NOT EXISTS files (
                             file_id INT AUTO_INCREMENT PRIMARY KEY,
                             file_name TEXT NOT NULL,
                             extension VARCHAR(250) NOT NULL
@@ -66,7 +66,7 @@ pub fn create_tables(
                 )?;
 
                 client.query_drop(format!(
-                    "CREATE TABLE chunks (
+                    "CREATE TABLE IF NOT EXISTS chunks (
                 chunk_id INT AUTO_INCREMENT PRIMARY KEY,
                 content LONGTEXT NOT NULL,
                 embeddings VECTOR({}) NOT NULL,
