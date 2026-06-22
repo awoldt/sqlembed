@@ -145,7 +145,7 @@ pub fn extract_text_from_file(file: &FileDetail) -> Result<String, Box<dyn Error
     if DOCUMENT_EXTENSIONS.contains(&file.extension.as_str()) {
         match file.extension.as_str() {
             "pdf" => {
-                let pdf = PdfDocument::open(file.absolute_path.clone())?;
+                let pdf = PdfDocument::open(&file.absolute_path)?;
                 if pdf.is_empty() {
                     // no pages on pdf, just return success with no chunks
                     return Ok(String::new());
@@ -155,8 +155,7 @@ pub fn extract_text_from_file(file: &FileDetail) -> Result<String, Box<dyn Error
             }
 
             "docx" => {
-                let doc: docx_lite::Document =
-                    parse_document_from_path(file.absolute_path.clone())?;
+                let doc: docx_lite::Document = parse_document_from_path(&file.absolute_path)?;
                 let str: String = doc.extract_text();
                 return Ok(str);
             }
@@ -218,13 +217,14 @@ pub fn embed_chunks(
     // feeding all into the embed method all at once will expload memory usage
 
     for batch in chunks.chunks_mut(256) {
-        let words: Vec<String> = batch.iter().map(|x| x.content.clone()).collect();
+        let words: Vec<&String> = batch.iter().map(|x| &x.content).collect();
 
         let embeddings: Vec<Vec<f32>> = embedding_model.embed(words, None)?;
         *num_of_embeddings += embeddings.len() as i32;
+        
         // set the embedding now for each chunk
-        for (i, b) in batch.iter_mut().enumerate() {
-            b.embedding = embeddings[i].clone();
+        for (e, c) in embeddings.into_iter().zip(batch) {
+            c.embedding = e;
         }
     }
 
