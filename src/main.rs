@@ -162,6 +162,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let start: Instant = Instant::now();
             let mut successes: i32 = 0;
             let mut errors: i32 = 0;
+            let mut num_of_embeddings = 0;
             for (i, f) in files.iter().enumerate() {
                 pb.set_message(format!(
                     "File {:?}/{:?} | {:?}",
@@ -182,7 +183,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let mut chunks: Vec<parse::Chunk> = chunk_text(&file_text, &cli_config.chunk_size);
 
                 // 3. embed each chunk and set the embedding field on the struct
-                match embed_chunks(&mut chunks, &mut embedding_model) {
+                match embed_chunks(&mut chunks, &mut embedding_model, &mut num_of_embeddings) {
                     Ok(()) => (),
                     Err(e) => {
                         continue;
@@ -239,8 +240,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             println!(
                 "\n=======================
-Files Parsed : {}
-Elapsed Time : {:.2?}
+Files Parsed: {}
+Elapsed Time: {:.2?}
+Num of Embeddings: {}
 
 Errors: {}
 
@@ -248,6 +250,7 @@ Embedding model used: {}
 =======================",
                 successes,
                 start.elapsed(),
+                num_of_embeddings,
                 format!("{} errors", errors),
                 cli_config.model_to_use.model
             );

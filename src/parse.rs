@@ -210,6 +210,7 @@ pub fn chunk_text(file_text: &str, chunk_size: &i32) -> Vec<Chunk> {
 pub fn embed_chunks(
     chunks: &mut Vec<Chunk>,
     embedding_model: &mut TextEmbedding,
+    num_of_embeddings: &mut i32,
 ) -> Result<(), Box<dyn Error>> {
     // split this embedding process into batches
     // will be much faster and prevent massive memory usage
@@ -220,7 +221,7 @@ pub fn embed_chunks(
         let words: Vec<String> = batch.iter().map(|x| x.content.clone()).collect();
 
         let embeddings: Vec<Vec<f32>> = embedding_model.embed(words, None)?;
-
+        *num_of_embeddings += embeddings.len() as i32;
         // set the embedding now for each chunk
         for (i, b) in batch.iter_mut().enumerate() {
             b.embedding = embeddings[i].clone();
